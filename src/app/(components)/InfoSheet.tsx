@@ -5,7 +5,7 @@ import { Toilet } from "@/app/(lib)/toilets";
 import { formatDistance } from "@/app/(lib)/geo";
 import { isFavorite, toggleFavorite } from "@/app/(lib)/storage";
 import { ToiletIcon } from "@/app/(icons)/ToiletIcon";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchNearbyCommonsPhoto } from "@/app/(lib)/photos";
 
 type Props = {
@@ -18,6 +18,9 @@ type Props = {
 export function InfoSheet({ open, onOpenChange, toilet, distance }: Props) {
   const [fav, setFav] = useState(false);
   const [photo, setPhoto] = useState<{ url: string; title: string; author?: string; license?: string; pageUrl?: string } | null>(null);
+  const startYRef = useRef<number | null>(null);
+  const dragYRef = useRef<number>(0);
+  const [dragY, setDragY] = useState(0);
   useEffect(() => {
     if (toilet) setFav(isFavorite(toilet.id));
   }, [toilet]);
@@ -52,12 +55,45 @@ export function InfoSheet({ open, onOpenChange, toilet, distance }: Props) {
     window.open(url, "_blank");
   };
 
+  const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!open) return;
+    startYRef.current = e.touches[0]?.clientY ?? null;
+    dragYRef.current = 0;
+    setDragY(0);
+  };
+
+  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (startYRef.current == null) return;
+    const current = e.touches[0]?.clientY ?? 0;
+    const delta = Math.max(0, current - startYRef.current);
+    dragYRef.current = delta;
+    setDragY(delta);
+    if (delta > 0) e.preventDefault();
+  };
+
+  const onTouchEnd = () => {
+    const threshold = 60;
+    if (dragYRef.current > threshold) {
+      onOpenChange(false);
+    }
+    startYRef.current = null;
+    dragYRef.current = 0;
+    setDragY(0);
+  };
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/20 z-[1050]" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-[1100] rounded-t-2xl bg-white shadow-xl p-4 pb-20 max-h-[80vh]">
+        <Dialog.Content
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          className="fixed inset-x-0 bottom-0 z-[1100] rounded-t-2xl bg-white shadow-xl p-4 pb-20 max-h-[80vh]"
+          style={{ transform: dragY ? `translateY(${dragY}px)` : undefined, transition: dragY ? undefined : "transform 0.2s ease-out", willChange: "transform" }}
+        >
           <Dialog.Title className="sr-only">Toalettinformasjon</Dialog.Title>
+          <div className="mx-auto mt-1 mb-2 h-1 w-10 rounded-full bg-zinc-300" />
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-base font-semibold">{toilet.name || "Offentlig toalett"}</div>

@@ -52,3 +52,13 @@ html, body {
 
 /* Removed radar effects for solid native feel */
 
+.marker-pin .glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  color: #000;
+}
+

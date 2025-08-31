@@ -35,8 +35,8 @@ export function isFavorite(id: string): boolean {
 
 function cryptoRandomId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    // @ts-expect-error runtime property existence checked above
-    return (crypto as Crypto).randomUUID().slice(0, 8);
+    const c = crypto as unknown as { randomUUID?: () => string };
+    if (c.randomUUID) return c.randomUUID().slice(0, 8);
   }
   return Math.random().toString(36).slice(2, 10);
 }

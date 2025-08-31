@@ -25,14 +25,15 @@ export function InfoSheet({ open, onOpenChange, toilet, distance }: Props) {
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!toilet) return setPhoto(null);
-      const p = await fetchNearbyCommonsPhoto(toilet.coords.lat, toilet.coords.lng, 500);
+      if (!toilet) { setPhoto(null); return; }
+      const { lat, lng } = toilet.coords;
+      const p = await fetchNearbyCommonsPhoto(lat, lng, 500);
       if (!active) return;
       if (p) setPhoto({ url: p.thumbUrl, title: p.title, author: p.author, license: p.license, pageUrl: p.pageUrl });
       else setPhoto(null);
     })();
     return () => { active = false; };
-  }, [toilet?.id]);
+  }, [toilet]);
 
   const ratingIcons = useMemo(() => {
     const full = Math.round(toilet?.avgRating ?? 0);

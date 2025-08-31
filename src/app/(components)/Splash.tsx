@@ -17,12 +17,17 @@ export function Splash({ onGeolocated }: Props) {
     }, 150);
   };
   return (
-    <div className="fixed inset-0 bg-black text-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-xl font-semibold mb-6">Skyll for å finne</div>
+    <div className="fixed inset-0 bg-black text-white flex flex-col">
+      <div className="flex-1 grid place-items-center px-6 text-center">
+        <div>
+          <div className="text-5xl mb-4">🚽</div>
+          <div className="text-xl font-semibold">Skyll for å finne</div>
+        </div>
+      </div>
+      <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
         <button
           onClick={onClick}
-          className="relative overflow-hidden rounded-2xl bg-white text-black px-8 py-4 shadow-lg active:scale-[0.98] transition"
+          className="relative w-full overflow-hidden rounded-2xl bg-white text-black px-6 py-4 shadow-lg active:scale-[0.99] transition"
         >
           Skyll
           <AnimatePresence>

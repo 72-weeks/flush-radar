@@ -21,27 +21,18 @@ export default function RootLayout({
     <html lang="nb">
       <body className="antialiased bg-white text-black">
         <Suspense fallback={null}>{children}</Suspense>
-        <ServiceWorkerRegister />
-      </body>
-    </html>
-  );
-}
-
-function ServiceWorkerRegister() {
-  if (typeof window === "undefined") return null;
-  // @ts-ignore next-line
-  const SW: any = null;
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
   });
 }
-        `.trim(),
-      }}
-    />
+            `.trim(),
+          }}
+        />
+      </body>
+    </html>
   );
 }

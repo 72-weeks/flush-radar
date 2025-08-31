@@ -28,7 +28,7 @@ const SEED: Toilet[] = [
 ];
 
 let toilets: Toilet[] = [...SEED];
-let reviews: Review[] = [];
+const reviews: Review[] = [];
 
 export function listToilets() {
   return toilets;

@@ -6,20 +6,33 @@ import { formatDistance } from "@/app/(lib)/geo";
 import { isFavorite, toggleFavorite } from "@/app/(lib)/storage";
 import { ToiletIcon } from "@/app/(icons)/ToiletIcon";
 import { useEffect, useMemo, useState } from "react";
+import { fetchNearbyCommonsPhoto } from "@/app/(lib)/photos";
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   toilet?: Toilet | null;
   distance?: number;
-  current?: { lat: number; lng: number } | null;
 };
 
-export function InfoSheet({ open, onOpenChange, toilet, distance, current }: Props) {
+export function InfoSheet({ open, onOpenChange, toilet, distance }: Props) {
   const [fav, setFav] = useState(false);
+  const [photo, setPhoto] = useState<{ url: string; title: string; author?: string; license?: string; pageUrl?: string } | null>(null);
   useEffect(() => {
     if (toilet) setFav(isFavorite(toilet.id));
   }, [toilet]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!toilet) return setPhoto(null);
+      const p = await fetchNearbyCommonsPhoto(toilet.coords.lat, toilet.coords.lng, 500);
+      if (!active) return;
+      if (p) setPhoto({ url: p.thumbUrl, title: p.title, author: p.author, license: p.license, pageUrl: p.pageUrl });
+      else setPhoto(null);
+    })();
+    return () => { active = false; };
+  }, [toilet?.id]);
 
   const ratingIcons = useMemo(() => {
     const full = Math.round(toilet?.avgRating ?? 0);
@@ -61,6 +74,18 @@ export function InfoSheet({ open, onOpenChange, toilet, distance, current }: Pro
             <div className="flex items-center gap-1">{ratingIcons}</div>
             <div className="text-xs text-zinc-700">{(toilet.avgRating).toFixed(1)}/5 skyll</div>
           </div>
+          {photo && (
+            <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url} alt={photo.title} className="w-full h-[160px] object-cover" />
+              <div className="px-3 py-2 text-[11px] text-zinc-600 flex items-center justify-between">
+                <span>{photo.title}{photo.author ? ` — ${photo.author}` : ''}</span>
+                {photo.pageUrl && (
+                  <a href={photo.pageUrl} target="_blank" rel="noreferrer" className="underline">Kilde</a>
+                )}
+              </div>
+            </div>
+          )}
           <p className="mt-3 text-sm text-zinc-800 leading-snug">{toilet.synthesizedReview}</p>
           {toilet.hours && (
             <div className="mt-2 text-xs text-zinc-600">Åpningstider: {toilet.hours}</div>

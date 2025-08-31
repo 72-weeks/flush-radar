@@ -1,7 +1,6 @@
 "use client";
 import { Marker, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import { ToiletIcon } from "@/app/(icons)/ToiletIcon";
 import { useMemo } from "react";
 
 type Props = {

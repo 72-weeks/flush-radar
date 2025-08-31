@@ -2,8 +2,7 @@
 import { MapContainer, TileLayer, useMap, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import L from "leaflet";
-import { listToilets, Toilet, findToilet } from "@/app/(lib)/toilets";
+import { listToilets, Toilet } from "@/app/(lib)/toilets";
 import { haversineMeters } from "@/app/(lib)/geo";
 import { ToiletMarker } from "./ToiletMarker";
 import { InfoSheet } from "./InfoSheet";
@@ -18,7 +17,7 @@ export function MapView({ initial }: Props) {
   const [selected, setSelected] = useState<Toilet | null>(null);
   const [open, setOpen] = useState(false);
   const [distance, setDistance] = useState<number | undefined>(undefined);
-  const [map, setMap] = useState<L.Map | null>(null);
+  // no custom map state required
 
   useEffect(() => {
     const id = navigator.geolocation.watchPosition((pos) => {
@@ -37,14 +36,7 @@ export function MapView({ initial }: Props) {
 
   const within50 = selected ? haversineMeters(current, selected.coords) <= 50 : false;
 
-  const focusToilet = (id: string) => {
-    const t = findToilet(id);
-    if (t) {
-      setSelected(t);
-      setDistance(haversineMeters(current, t.coords));
-      setOpen(true);
-    }
-  };
+  // focusToilet removed (not needed yet)
 
   return (
     <div className="absolute inset-0">
@@ -54,7 +46,6 @@ export function MapView({ initial }: Props) {
         zoomControl={false}
         style={{ height: "100%", width: "100%" }}
         attributionControl={false}
-        whenCreated={(m) => setMap(m)}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

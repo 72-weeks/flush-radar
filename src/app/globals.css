@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Pulsing dot for current location */
+.leaflet-container .leaflet-interactive { cursor: pointer; }
+.leaflet-container { z-index: 0; }
+.leaflet-pane { z-index: 400; }
+.leaflet-top, .leaflet-bottom { z-index: 500; }
+
+.marker-pin {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+.marker-pin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  border: 2px solid #000;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.marker-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: #000;
+  border-radius: 9999px;
+}
+
+/* Removed radar effects for solid native feel */
+

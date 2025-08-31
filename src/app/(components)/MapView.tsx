@@ -58,7 +58,7 @@ export function MapView({ initial }: Props) {
         ))}
       </MapContainer>
       {/* No custom zoom controls; rely on pinch/drag */}
-      <InfoSheet open={open} onOpenChange={setOpen} toilet={selected} distance={distance} current={current} />
+      <InfoSheet open={open} onOpenChange={setOpen} toilet={selected} distance={distance} />
       {selected && (
         <div className="absolute left-3 right-3 bottom-24 z-[1000]">
           <RatePrompt toilet={selected} visible={within50} onSubmitted={()=>{ /* No-op, sheet shows updated avg next open */ }} />

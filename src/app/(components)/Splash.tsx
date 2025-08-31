@@ -17,7 +17,7 @@ export function Splash({ onGeolocated }: Props) {
     }, 150);
   };
   return (
-    <div className="fixed inset-0 bg-black text-white flex flex-col">
+    <div className="fixed inset-0 bg-black text-white flex flex-col" suppressHydrationWarning>
       <div className="flex-1 grid place-items-center px-6 text-center">
         <div>
           <div className="text-5xl mb-4">🚽</div>

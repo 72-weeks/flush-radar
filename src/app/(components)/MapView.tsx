@@ -2,7 +2,7 @@
 import { MapContainer, TileLayer, useMap, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { listToilets, Toilet } from "@/app/(lib)/toilets";
+import { listToilets, Toilet, findToilet } from "@/app/(lib)/toilets";
 import { haversineMeters } from "@/app/(lib)/geo";
 import { ToiletMarker } from "./ToiletMarker";
 import { InfoSheet } from "./InfoSheet";
@@ -37,6 +37,21 @@ export function MapView({ initial }: Props) {
   const within50 = selected ? haversineMeters(current, selected.coords) <= 50 : false;
 
   // focusToilet removed (not needed yet)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { id?: string; distance?: number } | undefined;
+      const id = detail?.id;
+      if (!id) return;
+      const t = findToilet(id);
+      if (!t) return;
+      setSelected(t);
+      setDistance(haversineMeters(current, t.coords));
+      setOpen(true);
+    };
+    window.addEventListener("flushradar:focus", handler as EventListener);
+    return () => window.removeEventListener("flushradar:focus", handler as EventListener);
+  }, [current]);
 
   return (
     <div className="absolute inset-0">

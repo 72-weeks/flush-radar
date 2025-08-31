@@ -20,3 +20,27 @@ function toRad(v: number): number {
   return (v * Math.PI) / 180;
 }
 
+export function bearingDegrees(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  const brng = Math.atan2(y, x);
+  let deg = (brng * 180) / Math.PI;
+  deg = (deg + 360) % 360;
+  return deg;
+}
+
+export function estimateTtpSeconds(distanceMeters: number, speedMps = 1.4): number {
+  // Approx walking speed ~1.4 m/s
+  return Math.round(distanceMeters / speedMps);
+}
+
+export function formatTtp(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s ? `${m}m ${s}s` : `${m}m`;
+}
+

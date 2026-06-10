@@ -132,11 +132,14 @@ export class Vehicle {
       this.body.angularVelocity.y += steer * 2.2 * dt;
     }
 
-    // boost
+    // boost (tapers off near top speed, weaker in the air)
     this.boosting = allowDrive && input.boost && this.boostMeter > 0;
     if (this.boosting) {
       const f = this.forward();
-      this.body.applyForce(new CANNON.Vec3(f.x * BOOST_FORCE, f.y * BOOST_FORCE * 0.25, f.z * BOOST_FORCE));
+      const topSpeed = 42;
+      const taper = Math.max(0, 1 - this.speed / topSpeed);
+      const power = BOOST_FORCE * taper * (this.grounded ? 1 : 0.55);
+      this.body.applyForce(new CANNON.Vec3(f.x * power, Math.min(f.y, 0.35) * power, f.z * power));
       this.boostMeter = Math.max(0, this.boostMeter - 36 * dt);
     } else {
       this.boostMeter = Math.min(100, this.boostMeter + 4 * dt);

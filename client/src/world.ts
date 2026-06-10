@@ -22,14 +22,33 @@ export interface GateVisual {
 }
 
 export function setupEnvironment(scene: THREE.Scene, level: LevelId): THREE.DirectionalLight {
-  const skyColor = level === 'arena' ? 0x0e1d33 : 0x9fc8e8;
+  const skyColor = level === 'arena' ? 0x16294a : 0x9fc8e8;
   scene.background = new THREE.Color(skyColor);
-  scene.fog = new THREE.Fog(skyColor, level === 'arena' ? 120 : 180, level === 'arena' ? 420 : 850);
+  scene.fog = new THREE.Fog(skyColor, level === 'arena' ? 140 : 180, level === 'arena' ? 500 : 850);
 
-  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x4a6584, level === 'arena' ? 0.7 : 1.0);
+  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x4a6584, level === 'arena' ? 1.1 : 1.0);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff2dd, level === 'arena' ? 1.6 : 2.2);
+  if (level === 'arena') {
+    // stadium floodlights
+    for (const [x, z] of [[-40, -45], [40, -45], [-40, 45], [40, 45]] as const) {
+      const lamp = new THREE.PointLight(0xeaf4ff, 900, 220, 1.8);
+      lamp.position.set(x, 32, z);
+      scene.add(lamp);
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0x44597a, roughness: 0.8 });
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 32, 6), poleMat);
+      pole.position.set(x, 16, z);
+      scene.add(pole);
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(3.4, 1.4, 1.4),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeaf4ff, emissiveIntensity: 2 })
+      );
+      head.position.set(x, 32, z);
+      scene.add(head);
+    }
+  }
+
+  const sun = new THREE.DirectionalLight(0xfff2dd, level === 'arena' ? 1.2 : 2.2);
   sun.position.set(80, 140, 60);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -331,14 +350,50 @@ export function buildTerrainLevel(
   }
 
   if (level === 'pipe') {
-    // coping lines along the pipe edges
-    const copeMat = new THREE.MeshStandardMaterial({ color: 0xff6f61, emissive: 0xff6f61, emissiveIntensity: 0.6 });
+    // coping lines along the pipe edges (follow the slope)
+    const copeMat = new THREE.MeshStandardMaterial({ color: 0xff6f61, emissive: 0xff6f61, emissiveIntensity: 0.8 });
     for (const sx of [-1, 1]) {
-      const cope = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 240), copeMat);
-      const y = terrain.heightAt(sx * 15, 0);
-      cope.position.set(sx * 15, y + 0.3, 0);
-      scene.add(cope);
+      for (let z = -110; z <= 110; z += 20) {
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 21), copeMat);
+        const y1 = terrain.heightAt(sx * 15, z - 10);
+        const y2 = terrain.heightAt(sx * 15, z + 10);
+        seg.position.set(sx * 15, (y1 + y2) / 2 + 0.3, z);
+        seg.rotation.x = Math.atan2(y1 - y2, 20);
+        scene.add(seg);
+      }
     }
+    // flags on the deck
+    const flagColors = [0xffe66d, 0x6fe3ff, 0xff6f61, 0x7dffa0];
+    for (let z = -100; z <= 100; z += 25) {
+      for (const sx of [-1, 1]) {
+        const x = sx * 21;
+        const y = terrain.heightAt(x, z);
+        const pole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.12, 0.15, 5, 5),
+          new THREE.MeshStandardMaterial({ color: 0xdddddd })
+        );
+        pole.position.set(x, y + 2.5, z);
+        scene.add(pole);
+        const color = flagColors[Math.abs(z / 25) % flagColors.length];
+        const flag = new THREE.Mesh(
+          new THREE.BoxGeometry(1.6, 1, 0.08),
+          new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4 })
+        );
+        flag.position.set(x + 0.85, y + 4.4, z);
+        scene.add(flag);
+        animated.push((t) => {
+          flag.rotation.y = Math.sin(t * 3 + z) * 0.3;
+        });
+      }
+    }
+    // big banner over the drop-in
+    const banY = terrain.heightAt(0, 105);
+    const banner = new THREE.Mesh(
+      new THREE.BoxGeometry(46, 2.4, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x6fe3ff, emissive: 0x6fe3ff, emissiveIntensity: 0.9 })
+    );
+    banner.position.set(0, banY + 14, 105);
+    scene.add(banner);
   }
 
   return { pads: [], gates, animated };

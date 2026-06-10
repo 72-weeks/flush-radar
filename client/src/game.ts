@@ -481,6 +481,15 @@ export class Game {
           this.audio.checkpoint();
         }
       }
+      // left the rink (over the glass) -> back to your side
+      if (Math.abs(pos.x) > 45 || Math.abs(pos.z) > 75 || pos.y > 60 || pos.y < -10) this.respawn();
+    } else if (this.terrain) {
+      // fell off the mountain
+      const edgeX = this.terrain.halfW - 1;
+      const edgeZ = this.terrain.halfL - 1;
+      if (Math.abs(pos.x) > edgeX + 30 || Math.abs(pos.z) > edgeZ + 30 || pos.y < this.terrain.heightAt(pos.x, pos.z) - 25) {
+        this.respawn();
+      }
     }
 
     if (this.level === 'race' && this.phase === 'play') {
@@ -507,8 +516,6 @@ export class Game {
       for (const gate of this.built.gates) {
         gate.mat.emissiveIntensity = gate.index === this.myCp ? 1.6 + Math.sin(performance.now() * 0.008) * 0.7 : gate.index < this.myCp ? 0.15 : 0.6;
       }
-      // fell off the course
-      if (pos.y < this.terrain!.heightAt(pos.x, pos.z) - 30 || pos.y < -80) this.respawn();
     }
 
     // tricks
@@ -570,10 +577,22 @@ export class Game {
     this.sun.target.position.copy(pos);
   }
 
+  private camDir = new THREE.Vector3(0, 0, 1);
+
   private updateCamera(dt: number): void {
     const v = this.vehicle;
     const pos = v.mesh.position;
-    const fwd = v.forward();
+
+    // follow direction: horizontal velocity when moving, else horizontal facing
+    const vel = v.body.velocity;
+    const hSpeed = Math.hypot(vel.x, vel.z);
+    const f = v.forward();
+    const target = new THREE.Vector3();
+    if (hSpeed > 6) target.set(vel.x / hSpeed, 0, vel.z / hSpeed);
+    else if (Math.hypot(f.x, f.z) > 0.2) target.set(f.x, 0, f.z).normalize();
+    else target.copy(this.camDir);
+    this.camDir.lerp(target, Math.min(1, 5 * dt)).normalize();
+    const fwd = this.camDir;
 
     const dist = 10 + v.speed * 0.06;
     const desired = new THREE.Vector3(pos.x - fwd.x * dist, pos.y + 4.2, pos.z - fwd.z * dist);

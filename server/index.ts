@@ -58,6 +58,17 @@ function findRoom(level: LevelId): Room {
 wss.on('connection', (ws: WebSocket) => {
   let room: Room | null = null;
   let clientId = -1;
+  let alive = true;
+  ws.on('pong', () => (alive = true));
+  const heartbeat = setInterval(() => {
+    if (!alive) {
+      clearInterval(heartbeat);
+      ws.terminate();
+      return;
+    }
+    alive = false;
+    ws.ping();
+  }, 15000);
 
   ws.on('message', (raw) => {
     const msg = decode<C2S>(raw.toString());
@@ -77,6 +88,7 @@ wss.on('connection', (ws: WebSocket) => {
   });
 
   ws.on('close', () => {
+    clearInterval(heartbeat);
     if (room && clientId >= 0) {
       room.removeClient(clientId);
       console.log(`[leave] #${clientId} (${room.humanCount} humans left in ${room.level})`);

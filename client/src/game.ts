@@ -18,11 +18,13 @@ import {
   pipeSpawn,
   pipeTerrain,
   raceCheckpoints,
+  racePathX,
   raceSpawn,
   raceTerrain,
   RACE_FINISH_Z,
   type Terrain
 } from '../../shared/terrain';
+import { mulberry32 } from '../../shared/rng';
 import type { Phase, PlayerInfo, PlayerState, S2C } from '../../shared/protocol';
 import { GameAudio } from './audio';
 import { CameraShake, ParticleSystem } from './effects';
@@ -90,6 +92,12 @@ export class Game {
   private running = false;
   private lastTime = 0;
   private camPos = new THREE.Vector3(0, 10, 30);
+
+  // hazards & collectibles
+  private boulders: { body: CANNON.Body; mesh: THREE.Mesh }[] = [];
+  private boulderTimer = 4;
+  private avalancheWarned = false;
+  private stars: { mesh: THREE.Mesh; taken: boolean }[] = [];
 
   onDisconnect: (() => void) | null = null;
 
@@ -164,6 +172,7 @@ export class Game {
     } else {
       this.terrain = this.level === 'race' ? raceTerrain(seed) : pipeTerrain(seed);
       this.built = buildTerrainLevel(this.scene, this.world, this.terrain, this.level);
+      if (this.level === 'pipe') this.buildStars();
     }
 
     const color = this.myTeam >= 0 ? TEAM_COLORS[this.myTeam] : 0x42d77d;
@@ -323,6 +332,8 @@ export class Game {
       this.myCp = 0;
       this.myScore = 0;
       this.myFinish = 0;
+      this.avalancheWarned = false;
+      this.resetStars();
       this.hud.hideBanner();
       this.respawn();
     } else if (phase === 'play') {
@@ -353,7 +364,8 @@ export class Game {
 
   private addRemote(info: PlayerInfo): void {
     if (this.remotes.has(info.id)) return;
-    const color = info.team >= 0 ? TEAM_COLORS[info.team] : info.bot ? 0xb86fd9 : 0x42d77d;
+    const palette = [0xb86fd9, 0xffd84d, 0x4dd2ff, 0xff8a65, 0x7dffa0, 0xff6fae, 0xc0ccda, 0x9dff4d];
+    const color = info.team >= 0 ? TEAM_COLORS[info.team] : palette[info.id % palette.length];
     const mesh = buildVehicleMesh(color);
     this.scene.add(mesh);
     const label = makeLabel(info.name, info.bot);
@@ -439,6 +451,8 @@ export class Game {
     this.updateRemotes(dt);
     this.updatePuck();
     this.updateMode(dt);
+    this.updateBoulders(dt);
+    this.updateStars();
     this.updateEffects(dt, t / 1000);
     this.updateCamera(dt);
     this.updateHud();
@@ -466,6 +480,11 @@ export class Game {
     if (visible) {
       this.puckMesh.position.copy(this.puckBody.position as unknown as THREE.Vector3);
       this.puckMesh.quaternion.copy(this.puckBody.quaternion as unknown as THREE.Quaternion);
+      // glowing trail when the puck is flying
+      const sp = this.puckBody.velocity.length();
+      if (sp > 9) {
+        this.sparkFx.emit(this.puckMesh.position.clone(), new THREE.Vector3(0, 0.5, 0), 1.2, 0.5, Math.min(4, sp * 0.1));
+      }
     }
   }
 
@@ -496,11 +515,13 @@ export class Game {
       const cps = raceCheckpoints();
       if (this.myCp < cps.length) {
         const cp = cps[this.myCp];
-        if (pos.z < cp.z && Math.abs(pos.x - cp.x) < 32) {
+        // forgiving progress check; flying through the ring itself earns boost
+        if (pos.z < cp.z && Math.abs(pos.x - cp.x) < 70) {
+          const precise = Math.abs(pos.x - cp.x) < 14;
           this.myCp++;
           this.net.send({ t: 'checkpoint', index: this.myCp });
           this.audio.checkpoint();
-          if (cp.boost) {
+          if (cp.boost && precise) {
             this.vehicle.boostMeter = Math.min(100, this.vehicle.boostMeter + 55);
             this.hud.trickPopup('⚡ BOOST GATE +55');
           }
@@ -547,6 +568,124 @@ export class Game {
         this.hud.banner(String(n), 800);
         this.audio.countdownBeep();
       }
+    }
+  }
+
+  // ---------- hazards & collectibles ----------
+
+  /** Giant snowballs that chase you down Glacier Run. */
+  private updateBoulders(dt: number): void {
+    if (this.level !== 'race' || !this.terrain) return;
+    if (this.phase !== 'play') {
+      for (const b of this.boulders) {
+        this.scene.remove(b.mesh);
+        this.world.removeBody(b.body);
+      }
+      this.boulders = [];
+      this.boulderTimer = 4;
+      return;
+    }
+
+    this.boulderTimer -= dt;
+    const myZ = this.vehicle.body.position.z;
+    if (this.boulderTimer <= 0 && this.boulders.length < 6 && !this.myFinish) {
+      this.boulderTimer = 4 + Math.random() * 4;
+      const r = 1.6 + Math.random() * 1.4;
+      const z = myZ + 70 + Math.random() * 40; // uphill, behind the player
+      const x = racePathX(z) + (Math.random() - 0.5) * 34;
+      const body = new CANNON.Body({
+        mass: 300 * r,
+        material: new CANNON.Material({ friction: 0.25, restitution: 0.3 }),
+        angularDamping: 0.05,
+        linearDamping: 0.02
+      });
+      body.addShape(new CANNON.Sphere(r));
+      body.position.set(x, this.terrain.heightAt(x, z) + r + 1, z);
+      body.velocity.set(0, 0, -26 - Math.random() * 10);
+      body.angularVelocity.set((26 + Math.random() * 10) / r, 0, 0);
+      this.world.addBody(body);
+      const mesh = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(r, 1),
+        new THREE.MeshStandardMaterial({ color: 0xf0f7fd, roughness: 0.9, flatShading: true })
+      );
+      mesh.castShadow = true;
+      this.scene.add(mesh);
+      this.boulders.push({ body, mesh });
+      body.addEventListener('collide', (e: { body: CANNON.Body; contact: CANNON.ContactEquation }) => {
+        if (e.body === this.vehicle.body) {
+          const impact = Math.abs(e.contact.getImpactVelocityAlongNormal());
+          this.shake.add(Math.min(0.8, impact * 0.05));
+          this.audio.landThud(impact);
+          this.snowFx.burst(mesh.position.clone(), 9, 40, 1);
+        }
+      });
+      if (!this.avalancheWarned) {
+        this.avalancheWarned = true;
+        this.hud.feed('⚠️ AVALANCHE! Watch your six!', '#ff8a65');
+        this.audio.horn();
+      }
+    }
+
+    for (let i = this.boulders.length - 1; i >= 0; i--) {
+      const b = this.boulders[i];
+      b.mesh.position.copy(b.body.position as unknown as THREE.Vector3);
+      b.mesh.quaternion.copy(b.body.quaternion as unknown as THREE.Quaternion);
+      // emit a powder trail while rolling fast
+      if (b.body.velocity.length() > 10 && Math.random() < 0.3) {
+        this.snowFx.emit(b.mesh.position.clone(), new THREE.Vector3(0, 2, 0), 2, 0.7, 1);
+      }
+      const gone = b.body.position.z < myZ - 220 || b.body.velocity.length() < 2 || b.body.position.y < -100;
+      if (gone) {
+        this.scene.remove(b.mesh);
+        this.world.removeBody(b.body);
+        this.boulders.splice(i, 1);
+      }
+    }
+  }
+
+  /** Floating bonus stars over the halfpipe walls. */
+  private buildStars(): void {
+    const rng = mulberry32(777);
+    const starGeo = new THREE.OctahedronGeometry(1.1);
+    const starMat = new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0xffc107, emissiveIntensity: 1.1 });
+    for (let z = -100; z <= 100; z += 12) {
+      const side = rng() > 0.5 ? 1 : -1;
+      const x = side * (7 + rng() * 7);
+      const y = this.terrain!.heightAt(x, z) + 3.5 + rng() * 4;
+      const mesh = new THREE.Mesh(starGeo, starMat.clone());
+      mesh.position.set(x, y, z);
+      this.scene.add(mesh);
+      const star = { mesh, taken: false };
+      this.stars.push(star);
+      this.built.animated.push((t) => {
+        mesh.rotation.y = t * 2 + z;
+        mesh.position.y = y + Math.sin(t * 2.2 + z) * 0.4;
+      });
+    }
+  }
+
+  private updateStars(): void {
+    if (this.stars.length === 0) return;
+    const pos = this.vehicle.body.position;
+    for (const star of this.stars) {
+      if (star.taken) continue;
+      const d = star.mesh.position.distanceTo(new THREE.Vector3(pos.x, pos.y, pos.z));
+      if (d < 3) {
+        star.taken = true;
+        star.mesh.visible = false;
+        this.myScore += 50;
+        this.vehicle.boostMeter = Math.min(100, this.vehicle.boostMeter + 25);
+        this.net.send({ t: 'trick', points: 50, label: 'STAR' });
+        this.audio.trickChime(false);
+        this.sparkFx.burst(star.mesh.position.clone(), 8, 25, 0.8);
+      }
+    }
+  }
+
+  private resetStars(): void {
+    for (const star of this.stars) {
+      star.taken = false;
+      star.mesh.visible = true;
     }
   }
 

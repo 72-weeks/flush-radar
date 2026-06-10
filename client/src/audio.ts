@@ -47,6 +47,77 @@ export class GameAudio {
     this.boostGain = ctx.createGain();
     this.boostGain.gain.value = 0;
     noise.connect(boostFilter).connect(this.boostGain).connect(this.master);
+
+    this.startMusic();
+  }
+
+  // ---- music: tiny synthwave loop, scheduled with lookahead ----
+
+  private musicStep = 0;
+  private musicNextTime = 0;
+
+  private startMusic(): void {
+    const ctx = this.ctx!;
+    const musicGain = ctx.createGain();
+    musicGain.gain.value = 0.16;
+    musicGain.connect(this.master!);
+
+    const bpm = 126;
+    const stepDur = 60 / bpm / 2; // 8th notes
+    const bass = [55, 0, 55, 0, 65.4, 0, 55, 0, 82.4, 0, 73.4, 0, 65.4, 0, 49, 0];
+    this.musicNextTime = ctx.currentTime + 0.1;
+
+    setInterval(() => {
+      while (this.musicNextTime < ctx.currentTime + 0.25) {
+        const t = this.musicNextTime;
+        const step = this.musicStep % 16;
+        // kick on the beat
+        if (step % 4 === 0) {
+          const osc = ctx.createOscillator();
+          osc.frequency.setValueAtTime(150, t);
+          osc.frequency.exponentialRampToValueAtTime(45, t + 0.1);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.5, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          osc.connect(g).connect(musicGain);
+          osc.start(t);
+          osc.stop(t + 0.16);
+        }
+        // offbeat hat
+        if (step % 4 === 2) {
+          const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          const f = ctx.createBiquadFilter();
+          f.type = 'highpass';
+          f.frequency.value = 7000;
+          const g = ctx.createGain();
+          g.gain.value = 0.12;
+          src.connect(f).connect(g).connect(musicGain);
+          src.start(t);
+        }
+        // bass line
+        const note = bass[step];
+        if (note > 0) {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.value = note;
+          const f = ctx.createBiquadFilter();
+          f.type = 'lowpass';
+          f.frequency.value = 300;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.18, t);
+          g.gain.exponentialRampToValueAtTime(0.01, t + stepDur * 0.9);
+          osc.connect(f).connect(g).connect(musicGain);
+          osc.start(t);
+          osc.stop(t + stepDur);
+        }
+        this.musicNextTime += stepDur;
+        this.musicStep++;
+      }
+    }, 100);
   }
 
   private makeNoise(): AudioBufferSourceNode {

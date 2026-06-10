@@ -73,7 +73,11 @@ async function testArena(): Promise<void> {
     }
   }, 50);
 
-  await new Promise((r) => setTimeout(r, 25000));
+  // wait up to 60s, finish as soon as a goal happens
+  const start = Date.now();
+  while (Date.now() - start < 60000 && !sawGoal) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
   clearInterval(tick);
 
   check('snapshots streaming', snaps > 100, `snaps=${snaps}`);

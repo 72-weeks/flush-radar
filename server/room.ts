@@ -103,6 +103,10 @@ export class Room {
       { t: 'playerJoin', player: { id: client.id, name: client.name, team, bot: false } },
       client.id
     );
+    // first human into an idle room gets a fresh match
+    if (this.clients.size === 1 && this.phase !== 'waiting' && this.phase !== 'countdown') {
+      this.startCountdown();
+    }
     return client;
   }
 

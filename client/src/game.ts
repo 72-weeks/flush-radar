@@ -98,6 +98,8 @@ export class Game {
   private boulderTimer = 4;
   private avalancheWarned = false;
   private stars: { mesh: THREE.Mesh; taken: boolean }[] = [];
+  private wrongWayTimer = 0;
+  private wrongWayShown = 0;
 
   onDisconnect: (() => void) | null = null;
 
@@ -486,6 +488,39 @@ export class Game {
         this.sparkFx.emit(this.puckMesh.position.clone(), new THREE.Vector3(0, 0.5, 0), 1.2, 0.5, Math.min(4, sp * 0.1));
       }
     }
+    this.updatePuckArrow(visible);
+  }
+
+  /** Screen-edge arrow pointing at the puck when it's out of view. */
+  private updatePuckArrow(puckVisible: boolean): void {
+    const arrow = document.getElementById('puck-arrow')!;
+    if (!puckVisible || !this.puckMesh) {
+      arrow.classList.add('hidden');
+      return;
+    }
+    const p = this.puckMesh.position.clone().project(this.camera);
+    const camDir = new THREE.Vector3();
+    this.camera.getWorldDirection(camDir);
+    const toPuck = this.puckMesh.position.clone().sub(this.camera.position);
+    const inFront = camDir.dot(toPuck) > 0;
+    if (inFront && Math.abs(p.x) < 0.92 && Math.abs(p.y) < 0.92) {
+      arrow.classList.add('hidden');
+      return;
+    }
+    let nx = p.x;
+    let ny = p.y;
+    if (!inFront) {
+      nx = -nx;
+      ny = -ny;
+    }
+    const s = 0.88 / Math.max(Math.abs(nx), Math.abs(ny), 1e-4);
+    const ex = nx * s;
+    const ey = ny * s;
+    const sx = ((ex + 1) / 2) * innerWidth;
+    const sy = (1 - (ey + 1) / 2) * innerHeight;
+    const angle = Math.atan2(ex, ey); // 0 = pointing up
+    arrow.classList.remove('hidden');
+    arrow.style.transform = `translate(${sx - 17}px, ${sy - 17}px) rotate(${angle}rad)`;
   }
 
   private updateMode(dt: number): void {
@@ -532,6 +567,13 @@ export class Game {
         this.hud.banner('FINISH!', 3000, '#7dffa0');
         this.hud.subBanner(`${(this.myFinish / 1000).toFixed(2)}s`, 3000);
         this.audio.trickChime(true);
+      }
+      // wrong way detection (the course always descends -z)
+      if (!this.myFinish && this.vehicle.body.velocity.z > 8) this.wrongWayTimer += dt;
+      else this.wrongWayTimer = 0;
+      if (this.wrongWayTimer > 1.2 && performance.now() - this.wrongWayShown > 2500) {
+        this.wrongWayShown = performance.now();
+        this.hud.subBanner('⟲ WRONG WAY — turn around!', 2000);
       }
       // gate highlighting
       for (const gate of this.built.gates) {

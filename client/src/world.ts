@@ -414,5 +414,19 @@ export function buildPuckMesh(): THREE.Group {
   const glow = new THREE.PointLight(0x6fe3ff, 30, 18);
   glow.position.y = 1;
   g.add(glow);
+  // beacon pillar so the puck is visible across the rink
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 1.1, 26, 12, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0x6fe3ff,
+      transparent: true,
+      opacity: 0.16,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
+  );
+  beam.position.y = 13;
+  g.add(beam);
   return g;
 }

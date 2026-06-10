@@ -168,6 +168,12 @@ body {
 #leaderboard .t1 { color: #ff8a65; }
 
 #ping { position: absolute; bottom: 8px; right: 14px; font-size: 12px; color: #6f93b8; }
+
+#puck-arrow {
+  position: absolute; left: 0; top: 0; font-size: 34px; color: #6fe3ff;
+  text-shadow: 0 0 14px rgba(111,227,255,0.9);
+  will-change: transform;
+}
 #hint { position: absolute; bottom: 8px; left: 14px; font-size: 12px; color: #6f93b8; }
 
 @media (max-width: 760px) {

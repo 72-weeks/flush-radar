@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SLAPSHOT SUMMIT — hockey × snowboarding × racing</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="menu">
+    <div class="menu-inner">
+      <h1 class="title">SLAPSHOT<br/><span>SUMMIT</span></h1>
+      <p class="subtitle">hockey × snowboarding × car racing — online multiplayer</p>
+      <input id="name-input" type="text" maxlength="14" placeholder="YOUR CALLSIGN" autocomplete="off" />
+      <div id="level-cards"></div>
+      <button id="play-btn">DROP IN</button>
+      <div class="controls-help">
+        <b>WASD</b> drive &nbsp; <b>SHIFT</b> boost &nbsp; <b>SPACE</b> jump &nbsp;
+        <b>A/D + W/S in air</b> spin &amp; flip &nbsp; <b>CTRL</b> drift &nbsp;
+        <b>R</b> respawn &nbsp; <b>H</b> horn &nbsp; <b>TAB</b> scores &nbsp; <b>M</b> mute
+      </div>
+      <div id="conn-status"></div>
+    </div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="top-bar">
+      <div id="score-blue" class="score-box blue">0</div>
+      <div id="clock">0:00</div>
+      <div id="score-orange" class="score-box orange">0</div>
+    </div>
+    <div id="race-pos" class="hidden"></div>
+    <div id="banner" class="hidden"></div>
+    <div id="sub-banner" class="hidden"></div>
+    <div id="trick-popup" class="hidden"></div>
+    <div id="feed"></div>
+    <div id="bottom-left">
+      <div id="speed">0</div>
+      <div class="speed-unit">KM/H</div>
+    </div>
+    <div id="boost-wrap"><div id="boost-bar"></div></div>
+    <div id="leaderboard" class="hidden"></div>
+    <div id="ping"></div>
+    <div id="hint">R respawn · TAB scores · M mute</div>
+  </div>
+
+  <canvas id="game"></canvas>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

@@ -27,7 +27,7 @@ import {
   type Terrain
 } from '../../shared/terrain';
 import { mulberry32 } from '../../shared/rng';
-import type { Phase, PlayerInfo, PlayerState, S2C } from '../../shared/protocol';
+import { QUICK_CHATS, type Phase, type PlayerInfo, type PlayerState, type S2C } from '../../shared/protocol';
 import { GameAudio } from './audio';
 import { CameraShake, ParticleSystem } from './effects';
 import { Hud } from './hud';
@@ -209,7 +209,7 @@ export class Game {
     }
 
     const color = this.myTeam >= 0 ? TEAM_COLORS[this.myTeam] : 0x42d77d;
-    this.vehicle = new Vehicle(this.world, color);
+    this.vehicle = new Vehicle(this.world, color, this.net.myId);
     this.scene.add(this.vehicle.mesh);
     this.respawn();
 
@@ -391,6 +391,12 @@ export class Game {
         if (who && msg.id !== this.net.myId) this.hud.feed(`📣 ${who.name}`, '#fff');
         break;
       }
+      case 'chat': {
+        const who = this.players.get(msg.id);
+        const text = QUICK_CHATS[msg.i];
+        if (who && text) this.hud.feed(`${who.name}: ${text}`, msg.id === this.net.myId ? '#ffe66d' : '#fff');
+        break;
+      }
     }
   }
 
@@ -452,7 +458,7 @@ export class Game {
     if (this.remotes.has(info.id)) return;
     const palette = [0xb86fd9, 0xffd84d, 0x4dd2ff, 0xff8a65, 0x7dffa0, 0xff6fae, 0xc0ccda, 0x9dff4d];
     const color = info.team >= 0 ? TEAM_COLORS[info.team] : palette[info.id % palette.length];
-    const mesh = buildVehicleMesh(color);
+    const mesh = buildVehicleMesh(color, info.id);
     this.scene.add(mesh);
     const label = makeLabel(info.name, info.bot);
     label.position.y = 1.9;
@@ -1098,6 +1104,9 @@ export class Game {
     if (this.input.justPressed('KeyH')) {
       this.net.send({ t: 'horn' });
       this.audio.horn();
+    }
+    for (let i = 0; i < QUICK_CHATS.length; i++) {
+      if (this.input.justPressed(`Digit${i + 1}`)) this.net.send({ t: 'chat', i });
     }
   }
 }

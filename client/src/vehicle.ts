@@ -38,7 +38,7 @@ export class Vehicle {
   private lastVy = 0;
   landImpact = 0;
 
-  constructor(world: CANNON.World, color: number) {
+  constructor(world: CANNON.World, color: number, hatId = 0) {
     this.body = new CANNON.Body({
       mass: VEHICLE_MASS,
       material: new CANNON.Material({ friction: 0.01, restitution: 0.1 }),
@@ -83,7 +83,7 @@ export class Vehicle {
     }
     this.raycast.addToWorld(world);
 
-    this.mesh = buildVehicleMesh(color);
+    this.mesh = buildVehicleMesh(color, hatId);
   }
 
   get speed(): number {
@@ -262,7 +262,7 @@ function scoreTrick(airTime: number, spinRad: number, flipRad: number): TrickRes
 
 // ---------- visuals ----------
 
-export function buildVehicleMesh(color: number): THREE.Group {
+export function buildVehicleMesh(color: number, hatId = 0): THREE.Group {
   const g = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.5 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x10151c, roughness: 0.6, metalness: 0.3 });
@@ -331,10 +331,66 @@ export function buildVehicleMesh(color: number): THREE.Group {
     g.add(lamp);
   }
 
+  addHat(g, hatId, darkMat);
+
   g.traverse((o) => {
     if (o instanceof THREE.Mesh) {
       o.castShadow = true;
     }
   });
   return g;
+}
+
+/** Cosmetic toppers picked by player id, so karts are tellable apart. */
+function addHat(g: THREE.Group, hatId: number, darkMat: THREE.Material): void {
+  const y = 0.85;
+  switch (hatId % 5) {
+    case 1: {
+      // bobble antenna
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 5), darkMat);
+      pole.position.set(0.7, y + 0.4, -1.4);
+      g.add(pole);
+      const ball = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0xff5252, emissive: 0xff5252, emissiveIntensity: 0.5 })
+      );
+      ball.position.set(0.7, y + 0.92, -1.4);
+      g.add(ball);
+      break;
+    }
+    case 2: {
+      // traffic cone
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(0.32, 0.7, 8),
+        new THREE.MeshStandardMaterial({ color: 0xff7b1c })
+      );
+      cone.position.set(0, y + 0.35, -0.2);
+      g.add(cone);
+      break;
+    }
+    case 3: {
+      // tiny flag
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 5), darkMat);
+      pole.position.set(-0.7, y + 0.5, -1.4);
+      g.add(pole);
+      const flag = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.32, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x7dffa0, emissive: 0x7dffa0, emissiveIntensity: 0.4 })
+      );
+      flag.position.set(-0.44, y + 0.9, -1.4);
+      g.add(flag);
+      break;
+    }
+    case 4: {
+      // snowman buddy
+      const mat = new THREE.MeshStandardMaterial({ color: 0xf6fbff, roughness: 0.8 });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), mat);
+      body.position.set(0, y + 0.15, -0.2);
+      g.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), mat);
+      head.position.set(0, y + 0.5, -0.2);
+      g.add(head);
+      break;
+    }
+  }
 }

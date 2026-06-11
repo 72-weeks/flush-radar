@@ -41,7 +41,17 @@ export type C2S =
   | { t: 'finish'; timeMs: number }
   | { t: 'trick'; points: number; label: string }
   | { t: 'horn' }
+  | { t: 'chat'; i: number }
   | { t: 'ping'; ts: number };
+
+export const QUICK_CHATS = [
+  'NICE ONE! 👍',
+  'OOPS… 🙈',
+  'PASS IT! 🏒',
+  'WHAT A SAVE! 🧤',
+  "LET'S GO!! 🔥",
+  'GG 🏁'
+];
 
 // ---- server -> client ----
 
@@ -71,6 +81,7 @@ export type S2C =
   | { t: 'raceEnd'; standings: { id: number; timeMs: number }[] }
   | { t: 'trick'; id: number; points: number; label: string }
   | { t: 'horn'; id: number }
+  | { t: 'chat'; id: number; i: number }
   | { t: 'pong'; ts: number };
 
 export function encode(msg: C2S | S2C): string {

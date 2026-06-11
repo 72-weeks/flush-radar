@@ -56,6 +56,7 @@ export class Room {
   playStartMs = 0;
 
   private snapAccum = 0;
+  private lastChat = new Map<number, number>();
 
   constructor(level: LevelId) {
     this.level = level;
@@ -212,6 +213,14 @@ export class Room {
       case 'horn':
         this.broadcast({ t: 'horn', id: client.id });
         break;
+      case 'chat': {
+        const now = Date.now();
+        if (now - (this.lastChat.get(client.id) ?? 0) > 1000 && Number.isInteger(msg.i) && msg.i >= 0 && msg.i < 8) {
+          this.lastChat.set(client.id, now);
+          this.broadcast({ t: 'chat', id: client.id, i: msg.i });
+        }
+        break;
+      }
       case 'ping':
         client.ws.send(encode({ t: 'pong', ts: msg.ts }));
         break;

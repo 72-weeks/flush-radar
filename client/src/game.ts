@@ -184,6 +184,7 @@ export class Game {
 
     this.hud.show();
     this.hud.setArenaMode(this.level === 'arena');
+    if (matchMedia('(pointer: coarse)').matches) this.enableTouchControls();
     this.running = true;
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
@@ -444,6 +445,7 @@ export class Game {
     const dt = Math.min(0.05, (t - this.lastTime) / 1000);
     this.lastTime = t;
     if (dt <= 0) return;
+    this.input.pollGamepad();
 
     const allowDrive = this.phase === 'play' || this.phase === 'waiting' || this.phase === 'end' || this.phase === 'goalpause';
     this.vehicle.update(this.input, dt, allowDrive);
@@ -854,6 +856,28 @@ export class Game {
       this.hud.showLeaderboard(rows, title, true);
     } else {
       this.hud.showLeaderboard([], '', false);
+    }
+  }
+
+  private enableTouchControls(): void {
+    const wrap = document.getElementById('touch')!;
+    wrap.classList.remove('hidden');
+    for (const el of wrap.querySelectorAll<HTMLElement>('.t-btn')) {
+      const code = el.dataset.code!;
+      const press = (e: PointerEvent) => {
+        e.preventDefault();
+        el.classList.add('held');
+        this.input.setVirtual(code, true);
+      };
+      const release = () => {
+        el.classList.remove('held');
+        this.input.setVirtual(code, false);
+      };
+      el.addEventListener('pointerdown', press);
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+      el.addEventListener('pointerleave', release);
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
     }
   }
 

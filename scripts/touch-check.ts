@@ -1,0 +1,12 @@
+import { chromium, devices } from 'playwright';
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const ctx = await browser.newContext({ ...devices['iPhone 13 landscape'] });
+const page = await ctx.newPage();
+await page.goto('http://localhost:8080');
+await page.fill('#name-input', 'THUMBS');
+await page.tap('#play-btn');
+await page.waitForTimeout(6000);
+const touchVisible = await page.evaluate(() => !document.getElementById('touch')!.classList.contains('hidden'));
+await page.screenshot({ path: '/tmp/shot-mobile.png' });
+console.log('touch overlay visible:', touchVisible);
+await browser.close();

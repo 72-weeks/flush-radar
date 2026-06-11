@@ -22,6 +22,8 @@ import {
   raceSpawn,
   raceTerrain,
   RACE_FINISH_Z,
+  RACE_LENGTH,
+  RACE_WIDTH,
   type Terrain
 } from '../../shared/terrain';
 import { mulberry32 } from '../../shared/rng';
@@ -46,6 +48,7 @@ interface Remote {
   body: CANNON.Body;
   buffer: SnapEntry[];
   lastState?: PlayerState;
+  colorCss: string;
 }
 
 const INTERP_DELAY = 120; // ms
@@ -177,6 +180,11 @@ export class Game {
       this.terrain = this.level === 'race' ? raceTerrain(seed) : pipeTerrain(seed);
       this.built = buildTerrainLevel(this.scene, this.world, this.terrain, this.level);
       if (this.level === 'pipe') this.buildStars();
+      if (this.level === 'race') {
+        const path: { x: number; z: number }[] = [];
+        for (let z = RACE_LENGTH / 2; z >= -RACE_LENGTH / 2; z -= 20) path.push({ x: racePathX(z), z });
+        this.hud.initMinimap(path, raceCheckpoints(), RACE_WIDTH / 2, RACE_LENGTH / 2);
+      }
     }
 
     const color = this.myTeam >= 0 ? TEAM_COLORS[this.myTeam] : 0x42d77d;
@@ -393,7 +401,14 @@ export class Game {
     body.position.set(0, -100, 0);
     this.world.addBody(body);
 
-    this.remotes.set(info.id, { info, mesh, label, body, buffer: [] });
+    this.remotes.set(info.id, {
+      info,
+      mesh,
+      label,
+      body,
+      buffer: [],
+      colorCss: `#${color.toString(16).padStart(6, '0')}`
+    });
   }
 
   private removeRemote(id: number): void {
@@ -835,6 +850,12 @@ export class Game {
     this.hud.setPing(this.net.latency);
 
     if (this.level === 'race') {
+      const ents: { x: number; z: number; color: string; me: boolean }[] = [];
+      for (const r of this.remotes.values()) {
+        if (r.lastState) ents.push({ x: r.mesh.position.x, z: r.mesh.position.z, color: r.colorCss, me: false });
+      }
+      ents.push({ x: this.vehicle.body.position.x, z: this.vehicle.body.position.z, color: '#ffe66d', me: true });
+      this.hud.updateMinimap(ents);
       if (this.myFinish) {
         this.hud.setRacePos(`FINISHED — ${(this.myFinish / 1000).toFixed(2)}s`);
       } else {

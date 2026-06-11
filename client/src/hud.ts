@@ -81,6 +81,68 @@ export class Hud {
     this.trickTimer = window.setTimeout(() => e.classList.add('hidden'), ms);
   }
 
+  // ---- race minimap ----
+
+  private mapCanvas: HTMLCanvasElement | null = null;
+  private mapPath: { x: number; z: number }[] = [];
+  private mapCps: { x: number; z: number; boost: boolean }[] = [];
+  private mapRange = { halfW: 84, halfL: 480 };
+
+  initMinimap(path: { x: number; z: number }[], cps: { x: number; z: number; boost: boolean }[], halfW: number, halfL: number): void {
+    this.mapPath = path;
+    this.mapCps = cps;
+    this.mapRange = { halfW, halfL };
+    const c = document.createElement('canvas');
+    c.id = 'minimap';
+    c.width = 130;
+    c.height = 390;
+    document.getElementById('hud')!.appendChild(c);
+    this.mapCanvas = c;
+  }
+
+  updateMinimap(entities: { x: number; z: number; color: string; me: boolean }[]): void {
+    const c = this.mapCanvas;
+    if (!c) return;
+    const ctx = c.getContext('2d')!;
+    const { halfW, halfL } = this.mapRange;
+    const px = (x: number) => ((x + halfW) / (2 * halfW)) * c.width;
+    const pz = (z: number) => ((halfL - z) / (2 * halfL)) * c.height;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = 'rgba(8,16,32,0.55)';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, c.width, c.height, 10);
+    ctx.fill();
+    // course
+    ctx.strokeStyle = 'rgba(168,220,240,0.8)';
+    ctx.lineWidth = 7;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (const [i, p] of this.mapPath.entries()) {
+      if (i === 0) ctx.moveTo(px(p.x), pz(p.z));
+      else ctx.lineTo(px(p.x), pz(p.z));
+    }
+    ctx.stroke();
+    // checkpoints
+    for (const cp of this.mapCps) {
+      ctx.fillStyle = cp.boost ? '#ffb347' : '#6fe3ff';
+      ctx.beginPath();
+      ctx.arc(px(cp.x), pz(cp.z), 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // entities (draw me last, bigger)
+    for (const e of [...entities].sort((a, b) => Number(a.me) - Number(b.me))) {
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      ctx.arc(px(e.x), pz(e.z), e.me ? 5 : 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      if (e.me) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+  }
+
   /** Fullscreen color flash that fades out. */
   flash(color: string): void {
     let e = document.getElementById('flash');

@@ -27,7 +27,7 @@ import {
   type V3
 } from '../shared/protocol';
 import { ArenaSim } from './arenaSim';
-import { makeBot, stepArenaBot, stepRaceBot, botState, type Bot } from './bots';
+import { makeBot, stepArenaBot, stepRaceBot, botState, yawToQuat, type Bot } from './bots';
 
 interface Client {
   id: number;
@@ -57,6 +57,7 @@ export class Room {
 
   private snapAccum = 0;
   private lastChat = new Map<number, number>();
+  private lastTrick = new Map<number, number>();
 
   constructor(level: LevelId) {
     this.level = level;
@@ -204,12 +205,21 @@ export class Room {
           }
         }
         break;
-      case 'trick':
-        if (typeof msg.points === 'number' && msg.points > 0 && msg.points < 50000) {
+      case 'trick': {
+        // plausibility cap (max legit combos land well under this) + rate limit
+        const now = Date.now();
+        if (
+          typeof msg.points === 'number' &&
+          msg.points > 0 &&
+          msg.points <= 10000 &&
+          now - (this.lastTrick.get(client.id) ?? 0) > 1200
+        ) {
+          this.lastTrick.set(client.id, now);
           if (this.level === 'pipe') client.score += msg.points;
           this.broadcast({ t: 'trick', id: client.id, points: msg.points, label: String(msg.label).slice(0, 40) });
         }
         break;
+      }
       case 'horn':
         this.broadcast({ t: 'horn', id: client.id });
         break;
@@ -240,9 +250,7 @@ export class Room {
           const deficit = this.score[1 - bot.team] - this.score[bot.team];
           bot.speed = Math.min(31, Math.max(bot.baseSpeed - 2, bot.baseSpeed + deficit * 1.3));
           if (this.phase === 'play') stepArenaBot(bot, this.sim.puckState().p, dt);
-          this.sim.updatePlayer(bot.id, [...bot.pos] as V3, [0, Math.sin(bot.yaw / 2), 0, Math.cos(bot.yaw / 2)], [
-            ...bot.vel
-          ] as V3);
+          this.sim.updatePlayer(bot.id, [...bot.pos] as V3, yawToQuat(bot.yaw), [...bot.vel] as V3);
         } else if (this.level === 'race' && this.terrain && this.phase === 'play') {
           stepRaceBot(bot, this.terrain, dt, elapsed);
         }

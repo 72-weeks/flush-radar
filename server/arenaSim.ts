@@ -4,14 +4,7 @@
 
 import * as CANNON from 'cannon-es';
 import { arenaBoxes, goalVolumes, puckSpawn, GOAL_DEPTH, RINK_LENGTH, RINK_WIDTH } from '../shared/arena';
-import {
-  CHASSIS_HEIGHT,
-  CHASSIS_LENGTH,
-  CHASSIS_WIDTH,
-  PUCK_HEIGHT,
-  PUCK_MASS,
-  PUCK_RADIUS
-} from '../shared/constants';
+import { KART_COLLIDER_HALF, PUCK_HEIGHT, PUCK_MASS, PUCK_RADIUS } from '../shared/constants';
 import type { PuckState, Q4, V3 } from '../shared/protocol';
 
 export class ArenaSim {
@@ -70,9 +63,7 @@ export class ArenaSim {
 
   addPlayer(id: number): void {
     const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
-    body.addShape(
-      new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH / 2, CHASSIS_HEIGHT / 2 + 0.3, CHASSIS_LENGTH / 2))
-    );
+    body.addShape(new CANNON.Box(new CANNON.Vec3(...KART_COLLIDER_HALF)));
     body.position.set(0, -50, 0);
     this.world.addBody(body);
     this.playerBodies.set(id, body);

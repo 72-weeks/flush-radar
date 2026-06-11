@@ -3,9 +3,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import {
-  CHASSIS_HEIGHT,
   CHASSIS_LENGTH,
-  CHASSIS_WIDTH,
+  KART_COLLIDER_HALF,
   PUCK_HEIGHT,
   PUCK_MASS,
   PUCK_RADIUS,
@@ -13,7 +12,7 @@ import {
   TEAM_NAMES,
   type LevelId
 } from '../../shared/constants';
-import { arenaSpawn } from '../../shared/arena';
+import { arenaSpawn, GOAL_DEPTH, RINK_LENGTH, RINK_WIDTH } from '../../shared/arena';
 import {
   pipeSpawn,
   pipeTerrain,
@@ -38,6 +37,7 @@ import {
   buildArena,
   buildPuckMesh,
   buildTerrainLevel,
+  clientPuckMaterial,
   makeSnowfall,
   setupEnvironment,
   weatherForSeed,
@@ -90,7 +90,6 @@ export class Game {
 
   private puckMesh: THREE.Group | null = null;
   private puckBody: CANNON.Body | null = null;
-  private puckBuffer: SnapEntry[] = [];
 
   private phase: Phase = 'waiting';
   private clock = 0;
@@ -149,6 +148,7 @@ export class Game {
       onOpen: () => {},
       onClose: () => {
         this.running = false;
+        this.audio.dispose();
         this.onDisconnect?.();
       }
     });
@@ -181,7 +181,7 @@ export class Game {
       this.scene.add(this.puckMesh);
       this.puckBody = new CANNON.Body({
         mass: PUCK_MASS,
-        material: new CANNON.Material({ friction: 0.02, restitution: 0.6 }),
+        material: clientPuckMaterial,
         angularDamping: 0.4,
         linearDamping: 0.18
       });
@@ -319,8 +319,6 @@ export class Game {
           }
         }
         if (msg.puck && this.puckBody) {
-          this.puckBuffer.push({ t: now, state: { id: -1, p: msg.puck.p, q: msg.puck.q, v: msg.puck.v, boost: false } });
-          if (this.puckBuffer.length > 30) this.puckBuffer.shift();
           // blend the local predicted puck toward the server's truth
           const b = this.puckBody;
           const sp = msg.puck.p;
@@ -467,7 +465,7 @@ export class Game {
     mesh.add(label);
 
     const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
-    body.addShape(new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH / 2, CHASSIS_HEIGHT / 2 + 0.3, CHASSIS_LENGTH / 2)));
+    body.addShape(new CANNON.Box(new CANNON.Vec3(...KART_COLLIDER_HALF)));
     body.position.set(0, -100, 0);
     this.world.addBody(body);
 
@@ -622,9 +620,12 @@ export class Game {
     this.updatePuckArrow(visible);
   }
 
+  private arrowEl: HTMLElement | null = null;
+  private lastBoardRender = 0;
+
   /** Screen-edge arrow pointing at the puck when it's out of view. */
   private updatePuckArrow(puckVisible: boolean): void {
-    const arrow = document.getElementById('puck-arrow')!;
+    const arrow = (this.arrowEl ??= document.getElementById('puck-arrow')!);
     if (!puckVisible || !this.puckMesh) {
       arrow.classList.add('hidden');
       return;
@@ -667,7 +668,14 @@ export class Game {
         }
       }
       // left the rink (over the glass) -> back to your side
-      if (Math.abs(pos.x) > 45 || Math.abs(pos.z) > 75 || pos.y > 60 || pos.y < -10) this.respawn();
+      if (
+        Math.abs(pos.x) > RINK_WIDTH / 2 + 13 ||
+        Math.abs(pos.z) > RINK_LENGTH / 2 + GOAL_DEPTH + 15 ||
+        pos.y > 60 ||
+        pos.y < -10
+      ) {
+        this.respawn();
+      }
     } else if (this.terrain) {
       // fell off the mountain
       const edgeX = this.terrain.halfW - 1;
@@ -1056,9 +1064,10 @@ export class Game {
       this.hud.setRacePos('');
     }
 
-    // leaderboard
+    // leaderboard (rebuilding the DOM 60x/s while Tab is held is wasted reflow)
     const show = this.input.down('Tab') || this.phase === 'end';
-    if (show) {
+    if (show && performance.now() - this.lastBoardRender > 200) {
+      this.lastBoardRender = performance.now();
       const rows: { name: string; team: number; value: string; me: boolean; bot: boolean }[] = [];
       const me = { id: this.net.myId, cp: this.myCp, score: this.myScore, finish: this.myFinish };
       const all: { info: PlayerInfo; state?: PlayerState }[] = [];
@@ -1083,7 +1092,7 @@ export class Game {
       }
       const title = this.level === 'arena' ? 'AVALANCHE ARENA' : this.level === 'race' ? 'GLACIER RUN' : 'HALFPIPE HEAVEN';
       this.hud.showLeaderboard(rows, title, true);
-    } else {
+    } else if (!show) {
       this.hud.showLeaderboard([], '', false);
     }
   }
@@ -1102,11 +1111,13 @@ export class Game {
         el.classList.remove('held');
         this.input.setVirtual(code, false);
       };
-      el.addEventListener('pointerdown', press);
-      el.addEventListener('pointerup', release);
-      el.addEventListener('pointercancel', release);
-      el.addEventListener('pointerleave', release);
-      el.addEventListener('contextmenu', (e) => e.preventDefault());
+      // property assignment (not addEventListener) so reconnecting replaces
+      // the old Game's handlers instead of stacking them
+      el.onpointerdown = press;
+      el.onpointerup = release;
+      el.onpointercancel = release;
+      el.onpointerleave = release;
+      el.oncontextmenu = (e) => e.preventDefault();
     }
   }
 

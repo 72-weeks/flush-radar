@@ -146,6 +146,10 @@ export function makeSnowfall(scene: THREE.Scene, intensity = 1): (camPos: THREE.
 
 // ---------- Avalanche Arena ----------
 
+// Shared by game.ts for the predicted puck; contact pairs registered in
+// buildArena must mirror server/arenaSim.ts exactly or prediction diverges.
+export const clientPuckMaterial = new CANNON.Material('puck');
+
 export function buildArena(scene: THREE.Scene, world: CANNON.World): BuiltWorld {
   const animated: ((t: number, dt: number) => void)[] = [];
 
@@ -156,7 +160,8 @@ export function buildArena(scene: THREE.Scene, world: CANNON.World): BuiltWorld 
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const groundBody = new CANNON.Body({ mass: 0, material: new CANNON.Material({ friction: 0.02, restitution: 0.1 }) });
+  const groundMat = new CANNON.Material('ice');
+  const groundBody = new CANNON.Body({ mass: 0, material: groundMat });
   groundBody.addShape(new CANNON.Plane());
   groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
   world.addBody(groundBody);
@@ -181,7 +186,14 @@ export function buildArena(scene: THREE.Scene, world: CANNON.World): BuiltWorld 
   const wallMat3 = new THREE.MeshStandardMaterial({ color: 0xf4f8fb, roughness: 0.6 });
   const glassMat = new THREE.MeshStandardMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.22, roughness: 0.1 });
   const rampMat = new THREE.MeshStandardMaterial({ color: 0x6fb9e8, roughness: 0.3, metalness: 0.2 });
-  const wallPhys = new CANNON.Material({ friction: 0.05, restitution: 0.4 });
+  const wallPhys = new CANNON.Material('wall');
+  // mirror server/arenaSim.ts so the predicted puck bounces identically
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(clientPuckMaterial, groundMat, { friction: 0.02, restitution: 0.1 })
+  );
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(clientPuckMaterial, wallPhys, { friction: 0.05, restitution: 0.75 })
+  );
   for (const b of arenaBoxes()) {
     const mat = b.kind === 'glass' ? glassMat : b.kind === 'ramp' ? rampMat : wallMat3;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]), mat);

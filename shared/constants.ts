@@ -41,5 +41,13 @@ export const CHASSIS_WIDTH = 2.3;
 export const CHASSIS_HEIGHT = 0.9;
 export const VEHICLE_MASS = 220;
 
+// Forgiving kart collision box used for the puck's view of players,
+// on the server and for client-side prediction of remote karts alike.
+export const KART_COLLIDER_HALF: [number, number, number] = [
+  CHASSIS_WIDTH / 2,
+  CHASSIS_HEIGHT / 2 + 0.3,
+  CHASSIS_LENGTH / 2
+];
+
 export const TEAM_COLORS = [0x2196f3, 0xff5722]; // blue, orange
 export const TEAM_NAMES = ['ICE', 'FIRE'];

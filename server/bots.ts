@@ -2,7 +2,7 @@
 // fed into the arena sim / race standings exactly like remote players.
 
 import { RINK_LENGTH, RINK_WIDTH } from '../shared/arena';
-import type { PlayerState, V3 } from '../shared/protocol';
+import type { PlayerState, Q4, V3 } from '../shared/protocol';
 import { raceCheckpoints, RACE_FINISH_Z, type Terrain } from '../shared/terrain';
 
 export const BOT_NAMES = ['YETI', 'ZAMBONI', 'MOOSE', 'POWDER', 'SLUSH', 'ICEBERG', 'WALRUS', 'BLIZZARD'];
@@ -103,11 +103,15 @@ export function stepRaceBot(bot: Bot, terrain: Terrain, dt: number, elapsedMs: n
   bot.pos[1] = terrain.heightAt(bot.pos[0], bot.pos[2]) + 0.9;
 }
 
+export function yawToQuat(yaw: number): Q4 {
+  return [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)];
+}
+
 export function botState(bot: Bot): PlayerState {
   return {
     id: bot.id,
     p: [...bot.pos] as V3,
-    q: [0, Math.sin(bot.yaw / 2), 0, Math.cos(bot.yaw / 2)],
+    q: yawToQuat(bot.yaw),
     v: [...bot.vel] as V3,
     boost: false,
     cp: bot.cp,

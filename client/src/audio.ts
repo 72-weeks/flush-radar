@@ -55,6 +55,16 @@ export class GameAudio {
 
   private musicStep = 0;
   private musicNextTime = 0;
+  private musicTimer = 0;
+
+  /** Stop everything — must be called when the game ends or audio stacks across reconnects. */
+  dispose(): void {
+    clearInterval(this.musicTimer);
+    this.ctx?.close();
+    this.ctx = null;
+    this.master = null;
+    this.crowdGain = null;
+  }
 
   private startMusic(): void {
     const ctx = this.ctx!;
@@ -67,7 +77,7 @@ export class GameAudio {
     const bass = [55, 0, 55, 0, 65.4, 0, 55, 0, 82.4, 0, 73.4, 0, 65.4, 0, 49, 0];
     this.musicNextTime = ctx.currentTime + 0.1;
 
-    setInterval(() => {
+    this.musicTimer = window.setInterval(() => {
       while (this.musicNextTime < ctx.currentTime + 0.25) {
         const t = this.musicNextTime;
         const step = this.musicStep % 16;

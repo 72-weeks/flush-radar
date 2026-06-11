@@ -9,9 +9,13 @@ hockey-blade bumper. It is exactly as ridiculous as it sounds.
 
 | Mode | What happens |
 |------|--------------|
-| 🏒 **Avalanche Arena** | 3v3 puck mayhem under stadium floodlights. Slap a giant glowing puck into the enemy goal. Boost pads, wall ramps, double jumps, goal horns. Bots fill empty seats. |
-| 🏔️ **Glacier Run** | Downhill checkpoint race on a procedurally generated glacier. Boost gates, kicker jumps — and an **avalanche of giant snowballs** chasing you down. |
-| 🛹 **Halfpipe Heaven** | 90-second trick sessions in a giant halfpipe. Airtime, spins, flips, and floating bonus stars. Biggest score wins. |
+| 🏒 **Avalanche Arena** | 3v3 puck mayhem under stadium floodlights. Puck-cam, boost pads, wall ramps, double jumps, goal horns, a synthesized crowd, cinematic goal cams, golden-goal overtime, and an MVP. Bots fill empty seats and rubber-band to the score. |
+| 🏔️ **Glacier Run** | Downhill checkpoint race on a procedurally generated glacier with three weather rolls (bluebird / whiteout / golden hour). Boost gates, kicker jumps, a live minimap, PB splits at every gate — and an **avalanche of giant snowballs** chasing you down. |
+| 🛹 **Halfpipe Heaven** | 90-second trick sessions in a giant halfpipe. Airtime, spins, flips, combo multipliers up to ×5, and floating bonus stars. Biggest score wins. |
+
+Everywhere: drift mini-turbos (charge cyan → orange, release for a kick),
+quick-chat (keys 1–6), kart toppers, touch controls, gamepad support, and
+adaptive render quality that holds 60 fps on weak hardware.
 
 ## Controls
 

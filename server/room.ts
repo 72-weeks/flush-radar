@@ -58,6 +58,7 @@ export class Room {
   private snapAccum = 0;
   private lastChat = new Map<number, number>();
   private lastTrick = new Map<number, number>();
+  private overtime = false;
 
   constructor(level: LevelId) {
     this.level = level;
@@ -289,8 +290,16 @@ export class Room {
         this.setPhase('play', this.matchRemain);
         break;
       case 'play':
-        if (this.level === 'race') this.endRace();
-        else this.setPhase('end', END_SCREEN_SECONDS);
+        if (this.level === 'race') {
+          this.endRace();
+        } else if (this.level === 'arena' && this.score[0] === this.score[1] && !this.overtime) {
+          // sudden death: next goal wins
+          this.overtime = true;
+          this.clock = 90;
+          this.broadcast({ t: 'overtime' });
+        } else {
+          this.setPhase('end', END_SCREEN_SECONDS);
+        }
         break;
       case 'end':
         if (this.humanCount > 0) this.startCountdown();
@@ -306,6 +315,7 @@ export class Room {
   private startCountdown(): void {
     this.score = [0, 0];
     this.matchRemain = 0;
+    this.overtime = false;
     this.sim?.resetPuck();
     for (const c of this.clients.values()) {
       c.cp = 0;
@@ -336,6 +346,13 @@ export class Room {
     const scorerBot = this.bots.find((b) => b.id === scorer);
     if (scorerBot) scorerBot.score++;
     this.broadcast({ t: 'goal', team, scorerId: scorer, score: this.score });
+    if (this.overtime) {
+      // golden goal ends the match
+      this.setPhase('end', END_SCREEN_SECONDS);
+      this.sim.puck.position.set(0, 200, 0);
+      this.sim.puck.velocity.setZero();
+      return;
+    }
     this.matchRemain = Math.max(5, this.clock);
     this.setPhase('goalpause', GOAL_PAUSE_SECONDS);
     // park the puck far away during the pause so no double goals fire

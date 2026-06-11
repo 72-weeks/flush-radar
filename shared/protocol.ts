@@ -77,6 +77,7 @@ export type S2C =
       score: [number, number];
     }
   | { t: 'goal'; team: number; scorerId: number; score: [number, number] }
+  | { t: 'overtime' }
   | { t: 'phase'; phase: Phase; clock: number }
   | { t: 'raceEnd'; standings: { id: number; timeMs: number }[] }
   | { t: 'trick'; id: number; points: number; label: string }

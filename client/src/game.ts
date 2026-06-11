@@ -367,6 +367,11 @@ export class Game {
         this.clock = msg.clock;
         this.applyPhase(msg.phase);
         break;
+      case 'overtime':
+        this.hud.banner('OVERTIME', 3000, '#ffe66d');
+        this.hud.subBanner('⚡ GOLDEN GOAL — next score wins!', 3500);
+        this.audio.goalHorn();
+        break;
       case 'trick': {
         if (msg.id !== this.net.myId) {
           const who = this.players.get(msg.id);

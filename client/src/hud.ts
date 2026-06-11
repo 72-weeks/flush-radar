@@ -81,6 +81,20 @@ export class Hud {
     this.trickTimer = window.setTimeout(() => e.classList.add('hidden'), ms);
   }
 
+  /** Fullscreen color flash that fades out. */
+  flash(color: string): void {
+    let e = document.getElementById('flash');
+    if (!e) {
+      e = document.createElement('div');
+      e.id = 'flash';
+      document.getElementById('hud')!.appendChild(e);
+    }
+    e.style.background = color;
+    e.classList.remove('fading');
+    void e.offsetWidth;
+    e.classList.add('fading');
+  }
+
   feed(text: string, color = '#fff'): void {
     const wrap = el('feed');
     const item = document.createElement('div');

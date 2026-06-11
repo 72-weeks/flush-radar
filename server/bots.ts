@@ -15,7 +15,8 @@ export interface Bot {
   vel: V3;
   yaw: number;
   role: 'attack' | 'defend';
-  speed: number; // personal top speed
+  speed: number; // current top speed (rubber-banded in arena)
+  baseSpeed: number;
   cp: number;
   finish: number; // ms, 0 = not finished
   score: number;
@@ -25,6 +26,7 @@ let nextBotId = 1000;
 
 export function makeBot(team: number, role: 'attack' | 'defend'): Bot {
   const id = nextBotId++;
+  const speed = 20 + Math.random() * 5;
   return {
     id,
     name: BOT_NAMES[id % BOT_NAMES.length],
@@ -33,7 +35,8 @@ export function makeBot(team: number, role: 'attack' | 'defend'): Bot {
     vel: [0, 0, 0],
     yaw: 0,
     role,
-    speed: 20 + Math.random() * 5,
+    speed,
+    baseSpeed: speed,
     cp: 0,
     finish: 0,
     score: 0

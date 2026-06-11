@@ -100,6 +100,8 @@ export class Game {
   private stars: { mesh: THREE.Mesh; taken: boolean }[] = [];
   private wrongWayTimer = 0;
   private wrongWayShown = 0;
+  private goalCamTimer = 0;
+  private goalCamPos = new THREE.Vector3();
 
   onDisconnect: (() => void) | null = null;
 
@@ -290,7 +292,15 @@ export class Game {
         const teamName = TEAM_NAMES[msg.team];
         this.audio.goalHorn();
         this.shake.add(0.7);
-        if (this.puckMesh) this.sparkFx.burst(this.puckMesh.position.clone(), 18, 220, 1.6);
+        if (this.puckMesh) {
+          const p = this.puckMesh.position.clone();
+          this.sparkFx.burst(p, 18, 220, 1.6);
+          this.boostFx.burst(p, 14, 120, 1.4);
+          this.snowFx.burst(p, 11, 120, 1.4);
+          this.goalCamPos.copy(p);
+          this.goalCamTimer = 2.6;
+        }
+        this.hud.flash(msg.team === 0 ? 'rgba(33,150,243,0.35)' : 'rgba(255,87,34,0.35)');
         const color = msg.team === 0 ? '#6fb9ff' : '#ff8a65';
         this.hud.banner('GOAL!!!', 3200, color);
         this.hud.subBanner(`${scorer?.name ?? '???'} scores for ${teamName}!`, 3200);
@@ -345,7 +355,10 @@ export class Game {
         this.hud.banner('GO!', 900, '#7dffa0');
         this.audio.goBeep();
       }
-      if (prev === 'goalpause') this.respawn();
+      if (prev === 'goalpause') {
+        this.goalCamTimer = 0;
+        this.respawn();
+      }
     } else if (phase === 'end') {
       if (this.level === 'arena') {
         const [b, o] = this.score;
@@ -763,6 +776,21 @@ export class Game {
   private camDir = new THREE.Vector3(0, 0, 1);
 
   private updateCamera(dt: number): void {
+    // cinematic orbit around the net after a goal
+    if (this.goalCamTimer > 0) {
+      this.goalCamTimer -= dt;
+      const a = performance.now() * 0.0009;
+      const target = new THREE.Vector3(
+        this.goalCamPos.x + Math.cos(a) * 17,
+        this.goalCamPos.y + 6,
+        this.goalCamPos.z + Math.sin(a) * 17
+      );
+      this.camPos.lerp(target, Math.min(1, 4 * dt));
+      this.camera.position.copy(this.camPos).add(this.shake.update(dt));
+      this.camera.lookAt(this.goalCamPos);
+      return;
+    }
+
     const v = this.vehicle;
     const pos = v.mesh.position;
 

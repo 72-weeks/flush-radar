@@ -152,6 +152,7 @@ export class Room {
       while (this.bots.length < RACE_BOTS) {
         const bot = makeBot(-1, 'attack');
         bot.speed = 17 + this.bots.length * 3 + Math.random() * 3;
+        bot.baseSpeed = bot.speed;
         this.respawnBot(bot, this.bots.length);
         this.bots.push(bot);
       }
@@ -226,6 +227,9 @@ export class Room {
       const elapsed = Date.now() - this.playStartMs;
       for (const bot of this.bots) {
         if (this.level === 'arena' && this.sim) {
+          // rubber-banding: trailing team's bots speed up, leaders ease off
+          const deficit = this.score[1 - bot.team] - this.score[bot.team];
+          bot.speed = Math.min(31, Math.max(bot.baseSpeed - 2, bot.baseSpeed + deficit * 1.3));
           if (this.phase === 'play') stepArenaBot(bot, this.sim.puckState().p, dt);
           this.sim.updatePlayer(bot.id, [...bot.pos] as V3, [0, Math.sin(bot.yaw / 2), 0, Math.cos(bot.yaw / 2)], [
             ...bot.vel

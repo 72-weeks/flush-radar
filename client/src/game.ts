@@ -115,6 +115,8 @@ export class Game {
   private wrongWayShown = 0;
   private goalCamTimer = 0;
   private goalCamPos = new THREE.Vector3();
+  private combo = 0;
+  private comboExpires = 0;
 
   onDisconnect: (() => void) | null = null;
 
@@ -631,8 +633,15 @@ export class Game {
       } else if (!this.myFinish && pos.z < RACE_FINISH_Z) {
         this.myFinish = performance.now() - this.playStart;
         this.net.send({ t: 'finish', timeMs: this.myFinish });
-        this.hud.banner('FINISH!', 3000, '#7dffa0');
-        this.hud.subBanner(`${(this.myFinish / 1000).toFixed(2)}s`, 3000);
+        const pb = Number(localStorage.getItem('pb-race') || 0);
+        if (!pb || this.myFinish < pb) {
+          localStorage.setItem('pb-race', String(Math.round(this.myFinish)));
+          this.hud.banner('FINISH!', 3000, '#7dffa0');
+          this.hud.subBanner(`${(this.myFinish / 1000).toFixed(2)}s — 🏅 NEW PERSONAL BEST!`, 4000);
+        } else {
+          this.hud.banner('FINISH!', 3000, '#7dffa0');
+          this.hud.subBanner(`${(this.myFinish / 1000).toFixed(2)}s · PB ${(pb / 1000).toFixed(2)}s`, 4000);
+        }
         this.audio.trickChime(true);
       }
       // wrong way detection (the course always descends -z)
@@ -648,18 +657,28 @@ export class Game {
       }
     }
 
-    // tricks
+    // tricks (with a combo multiplier while you keep the chain alive)
     const landed = this.vehicle.justLanded;
+    const now = performance.now();
     if (landed && landed.points >= 20 && this.phase === 'play') {
-      const total = landed.points;
-      this.hud.trickPopup(`${landed.label}<br>+${total}`);
+      this.combo = now < this.comboExpires ? Math.min(5, this.combo + 1) : 1;
+      this.comboExpires = now + 6000;
+      const total = landed.points * this.combo;
+      const comboTag = this.combo > 1 ? ` ×${this.combo}` : '';
+      this.hud.trickPopup(`${landed.label}${comboTag}<br>+${total}`);
       this.audio.trickChime(total > 200);
       this.vehicle.boostMeter = Math.min(100, this.vehicle.boostMeter + total * 0.1);
       if (this.level === 'pipe') {
         this.myScore += total;
-        this.net.send({ t: 'trick', points: total, label: landed.label });
+        this.net.send({ t: 'trick', points: total, label: `${landed.label}${comboTag}` });
       }
+    } else if (landed && this.vehicle.landImpact > 12 && this.combo > 0) {
+      // botched landing breaks the chain
+      this.combo = 0;
+      this.comboExpires = 0;
+      this.hud.trickPopup('💢 COMBO LOST', 1100);
     }
+    if (now > this.comboExpires) this.combo = 0;
     if (this.vehicle.landImpact > 8) {
       this.shake.add(Math.min(0.5, this.vehicle.landImpact * 0.03));
       this.audio.landThud(this.vehicle.landImpact);
@@ -919,7 +938,8 @@ export class Game {
         this.hud.setRacePos(`POS ${ahead + 1}/${total} · CP ${this.myCp}/${raceCheckpoints().length}`);
       }
     } else if (this.level === 'pipe') {
-      this.hud.setRacePos(`SCORE ${this.myScore}`);
+      const comboTag = this.combo > 1 ? ` · COMBO ×${this.combo}` : '';
+      this.hud.setRacePos(`SCORE ${this.myScore}${comboTag}`);
     } else {
       this.hud.setRacePos('');
     }

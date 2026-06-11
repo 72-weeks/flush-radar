@@ -43,6 +43,19 @@ Open `http://localhost:8080` — in as many tabs/machines as you like, it's
 multiplayer. For development, `npm run dev` runs Vite (port 5173, hot reload)
 plus the game server (8080) with the websocket proxied.
 
+## Hosting it
+
+The game is one Node process serving HTTP **and WebSockets on the same port**
+(`PORT` env var, default 8080). That means it needs a persistent host —
+**static/serverless platforms like Vercel cannot run the multiplayer server**
+(a `vercel.json` in this repo disables Vercel builds so it doesn't try).
+
+- **Render** (free tier): New + → Blueprint → pick this repo + branch; the
+  included `render.yaml` does the rest.
+- **Railway / Fly.io / any Docker host**: the included `Dockerfile` works
+  as-is (`docker build -t slapshot . && docker run -p 8080:8080 slapshot`).
+- **Bare VPS**: `npm ci && npm run build && PORT=80 npm start`.
+
 ## Architecture
 
 ```

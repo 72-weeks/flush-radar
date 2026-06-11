@@ -1,0 +1,11 @@
+# Render blueprint: deploys the game (HTTP + WebSockets on one port).
+# In Render: New + -> Blueprint -> pick this repo and branch.
+services:
+  - type: web
+    name: slapshot-summit
+    runtime: node
+    plan: free
+    branch: claude/threejs-sports-game-multiplayer-ecvp04
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /

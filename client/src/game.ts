@@ -118,6 +118,11 @@ export class Game {
   private combo = 0;
   private comboExpires = 0;
 
+  // adaptive quality
+  private fpsEma = 60;
+  private qualityLevel = 0; // 0 = full, higher = cheaper
+  private qualityCooldown = 0;
+
   onDisconnect: (() => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -541,7 +546,38 @@ export class Game {
 
     this.audio.update(this.vehicle.speed, Math.abs(this.input.throttle), this.vehicle.boosting);
     this.input.endFrame();
+    this.adaptQuality(dt);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Steps render resolution (and finally shadows) down when fps sags, back up when there's headroom. */
+  private adaptQuality(dt: number): void {
+    this.fpsEma = this.fpsEma * 0.95 + (1 / dt) * 0.05;
+    this.qualityCooldown -= dt;
+    if (this.qualityCooldown > 0) return;
+    const base = Math.min(devicePixelRatio, 2);
+    const ratios = [base, base * 0.8, base * 0.65, base * 0.5];
+    if (this.fpsEma < 45 && this.qualityLevel < ratios.length) {
+      this.qualityLevel++;
+      this.qualityCooldown = 3;
+    } else if (this.fpsEma > 57 && this.qualityLevel > 0) {
+      this.qualityLevel--;
+      this.qualityCooldown = 5;
+    } else {
+      return;
+    }
+    if (this.qualityLevel < ratios.length) {
+      this.renderer.setPixelRatio(Math.max(0.5, ratios[this.qualityLevel]));
+      if (!this.renderer.shadowMap.enabled) {
+        this.renderer.shadowMap.enabled = true;
+        this.sun.castShadow = true;
+      }
+    } else {
+      // last resort: kill shadows
+      this.renderer.setPixelRatio(0.5);
+      this.renderer.shadowMap.enabled = false;
+      this.sun.castShadow = false;
+    }
   }
 
   private updatePuck(): void {
@@ -914,7 +950,7 @@ export class Game {
     this.hud.setBoost(this.vehicle.boostMeter / 100);
     this.hud.setClock(this.clock);
     this.hud.setScore(this.score);
-    this.hud.setPing(this.net.latency);
+    this.hud.setPing(this.net.latency, Math.round(this.fpsEma));
 
     if (this.level === 'race') {
       const ents: { x: number; z: number; color: string; me: boolean }[] = [];

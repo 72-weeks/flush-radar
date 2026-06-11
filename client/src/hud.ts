@@ -168,8 +168,8 @@ export class Hud {
     setTimeout(() => item.remove(), 6000);
   }
 
-  setPing(ms: number): void {
-    el('ping').textContent = `${Math.round(ms)} ms`;
+  setPing(ms: number, fps?: number): void {
+    el('ping').textContent = fps ? `${fps} fps · ${Math.round(ms)} ms` : `${Math.round(ms)} ms`;
   }
 
   showLeaderboard(rows: { name: string; team: number; value: string; me: boolean; bot: boolean }[], title: string, visible: boolean): void {

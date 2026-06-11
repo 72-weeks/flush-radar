@@ -204,6 +204,30 @@ export class Game {
     this.scene.add(this.vehicle.mesh);
     this.respawn();
 
+    // kart-on-kart contact juice
+    this.vehicle.body.addEventListener('collide', (e: { body: CANNON.Body; contact: CANNON.ContactEquation }) => {
+      let isKart = false;
+      for (const r of this.remotes.values()) {
+        if (r.body === e.body) {
+          isKart = true;
+          break;
+        }
+      }
+      if (!isKart) return;
+      const impact = Math.abs(e.contact.getImpactVelocityAlongNormal());
+      if (impact < 6) return;
+      this.shake.add(Math.min(0.6, impact * 0.035));
+      this.audio.landThud(impact * 0.8);
+      const mid = this.vehicle.mesh.position.clone().lerp(
+        new THREE.Vector3(e.body.position.x, e.body.position.y, e.body.position.z),
+        0.5
+      );
+      this.sparkFx.burst(mid, 7, Math.min(40, impact * 2.5), 0.6);
+      if (impact > 14) this.hud.trickPopup('💥 BIG HIT');
+    });
+
+    if (this.level === 'arena') this.audio.startCrowd();
+
     this.hud.show();
     this.hud.setArenaMode(this.level === 'arena');
     if (matchMedia('(pointer: coarse)').matches) this.enableTouchControls();
@@ -311,6 +335,7 @@ export class Game {
         const scorer = this.players.get(msg.scorerId);
         const teamName = TEAM_NAMES[msg.team];
         this.audio.goalHorn();
+        this.audio.crowdCheer();
         this.shake.add(0.7);
         if (this.puckMesh) {
           const p = this.puckMesh.position.clone();

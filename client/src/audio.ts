@@ -188,6 +188,40 @@ export class GameAudio {
     src.start();
   }
 
+  // ---- synthesized crowd (arena) ----
+
+  private crowdGain: GainNode | null = null;
+
+  startCrowd(): void {
+    if (!this.ctx || !this.master || this.crowdGain) return;
+    const ctx = this.ctx;
+    const noise = this.makeNoise();
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 500;
+    this.crowdGain = ctx.createGain();
+    this.crowdGain.gain.value = 0.035;
+    // slow swell so the murmur breathes
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.13;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.012;
+    lfo.connect(lfoGain).connect(this.crowdGain.gain);
+    lfo.start();
+    noise.connect(lp).connect(this.crowdGain).connect(this.master);
+  }
+
+  crowdCheer(): void {
+    if (!this.ctx || !this.crowdGain) return;
+    const t = this.ctx.currentTime;
+    const g = this.crowdGain.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(0.3, t + 0.25);
+    g.setValueAtTime(0.3, t + 1.4);
+    g.exponentialRampToValueAtTime(0.035, t + 3.2);
+  }
+
   /** Classic hockey goal horn. */
   goalHorn(): void {
     if (!this.ctx || !this.master) return;

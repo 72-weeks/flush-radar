@@ -27,6 +27,13 @@ const MIME: Record<string, string> = {
 const server = http.createServer(async (req, res) => {
   try {
     const url = (req.url || '/').split('?')[0];
+    if (url === '/status') {
+      const counts: Record<string, number> = { arena: 0, race: 0, pipe: 0 };
+      for (const room of rooms) counts[room.level] += room.humanCount;
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(counts));
+      return;
+    }
     let file = path.normalize(path.join(DIST, url === '/' ? 'index.html' : url));
     if (!file.startsWith(DIST)) {
       res.writeHead(403).end();

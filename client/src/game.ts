@@ -240,6 +240,7 @@ export class Game {
 
     this.hud.show();
     this.hud.setArenaMode(this.level === 'arena');
+    document.getElementById('exit-btn')!.onclick = () => this.exitToMenu();
     if (matchMedia('(pointer: coarse)').matches) this.enableTouchControls();
     this.running = true;
     this.lastTime = performance.now();
@@ -1126,7 +1127,15 @@ export class Game {
     }
   }
 
+  /** Reload gives a guaranteed-fresh menu (renderer, listeners, audio all reset). */
+  private exitToMenu(): void {
+    this.onDisconnect = null;
+    this.net.close();
+    location.reload();
+  }
+
   private handleKeys(): void {
+    if (this.input.justPressed('Escape')) this.exitToMenu();
     if (this.input.justPressed('KeyR')) this.respawn();
     if (this.input.justPressed('KeyC') && this.level === 'arena') {
       this.puckCam = !this.puckCam;

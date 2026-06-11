@@ -6,11 +6,11 @@ import * as CANNON from 'cannon-es';
 import { CHASSIS_HEIGHT, CHASSIS_LENGTH, CHASSIS_WIDTH, VEHICLE_MASS } from '../../shared/constants';
 import type { Input } from './input';
 
-const MAX_STEER = 0.55;
+const MAX_STEER = 0.68;
 const ENGINE_FORCE = 2600;
 const BOOST_FORCE = 7500;
 const JUMP_SPEED = 7.5;
-const GRIP = 3.0;
+const GRIP = 3.4;
 const DRIFT_GRIP = 0.9;
 
 export interface TrickResult {
@@ -114,10 +114,14 @@ export class Vehicle {
     const throttle = allowDrive ? input.throttle : 0;
     const steer = allowDrive ? input.steer : 0;
 
-    // steering softens with speed
-    const steerScale = 1 / (1 + this.speed * 0.02);
+    // steering softens with speed (gently), plus an immediate yaw assist for
+    // snappy turn-in despite the icy tires
+    const steerScale = 1 / (1 + this.speed * 0.012);
     rc.setSteeringValue(steer * MAX_STEER * steerScale, 0);
     rc.setSteeringValue(steer * MAX_STEER * steerScale, 1);
+    if (this.grounded && steer !== 0 && !input.drift) {
+      this.body.angularVelocity.y += steer * 1.2 * dt * Math.min(1, this.speed / 12);
+    }
 
     // drive / brake
     const reversing = throttle < 0 && this.forwardSpeed > 1;

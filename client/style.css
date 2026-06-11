@@ -56,6 +56,15 @@ body {
   width: 200px; padding: 18px 14px; cursor: pointer; border-radius: 14px;
   background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12);
   transition: transform .12s, border-color .12s, background .12s;
+  position: relative;
+}
+
+.card-badge {
+  position: absolute; top: -10px; right: -8px;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: #06121f; background: #7dffa0;
+  box-shadow: 0 2px 12px rgba(125,255,160,0.5);
+  animation: pop .3s ease-out;
 }
 .level-card:hover { transform: translateY(-3px); }
 .level-card.selected { border-color: var(--ice); background: rgba(120,200,255,0.14); }
@@ -169,6 +178,15 @@ body {
 #leaderboard .t1 { color: #ff8a65; }
 
 #ping { position: absolute; bottom: 8px; right: 14px; font-size: 12px; color: #6f93b8; }
+
+#exit-btn {
+  position: absolute; top: 14px; left: 14px; width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; pointer-events: auto;
+  font-size: 18px; color: #cfeaff;
+  background: rgba(8,16,32,0.6); border: 1px solid rgba(174,230,255,0.3);
+}
+#exit-btn:hover { background: rgba(174,230,255,0.25); }
 
 #puck-arrow {
   position: absolute; left: 0; top: 0; font-size: 34px; color: #6fe3ff;

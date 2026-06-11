@@ -12,11 +12,16 @@ const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
 const status = document.getElementById('conn-status')!;
 
 let selected: LevelId = 'arena';
+const badges = new Map<LevelId, HTMLElement>();
 
 for (const level of LEVELS) {
   const card = document.createElement('div');
   card.className = 'level-card' + (level.id === selected ? ' selected' : '');
   card.innerHTML = `<div class="icon">${ICONS[level.id]}</div><h3>${level.name}</h3><p>${level.tagline}</p>`;
+  const badge = document.createElement('div');
+  badge.className = 'card-badge hidden';
+  card.appendChild(badge);
+  badges.set(level.id, badge);
   card.onclick = () => {
     selected = level.id;
     for (const c of cards.children) c.classList.remove('selected');
@@ -24,6 +29,23 @@ for (const level of LEVELS) {
   };
   cards.appendChild(card);
 }
+
+// badge modes where people are already playing
+async function refreshCounts(): Promise<void> {
+  if (menu.classList.contains('hidden')) return;
+  try {
+    const counts: Record<string, number> = await (await fetch('/status')).json();
+    for (const [id, badge] of badges) {
+      const n = counts[id] ?? 0;
+      badge.classList.toggle('hidden', n === 0);
+      badge.textContent = `● ${n} playing`;
+    }
+  } catch {
+    // server unreachable: leave badges as-is
+  }
+}
+refreshCounts();
+setInterval(refreshCounts, 5000);
 
 nameInput.value = localStorage.getItem('callsign') ?? '';
 

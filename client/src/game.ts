@@ -117,6 +117,7 @@ export class Game {
   private goalCamPos = new THREE.Vector3();
   private combo = 0;
   private comboExpires = 0;
+  private myArenaScore = 0;
 
   // adaptive quality
   private fpsEma = 60;
@@ -304,7 +305,10 @@ export class Game {
         this.score = msg.score;
         if (msg.phase !== this.phase) this.applyPhase(msg.phase);
         for (const ps of msg.players) {
-          if (ps.id === this.net.myId) continue;
+          if (ps.id === this.net.myId) {
+            this.myArenaScore = ps.score ?? 0;
+            continue;
+          }
           const r = this.remotes.get(ps.id);
           if (r) {
             r.buffer.push({ t: now, state: ps });
@@ -415,11 +419,24 @@ export class Game {
       if (this.level === 'arena') {
         const [b, o] = this.score;
         const winner = b === o ? -1 : b > o ? 0 : 1;
-        if (winner === -1) this.hud.banner('DRAW', 6000);
-        else {
+        // MVP: most goals across everyone
+        let mvpName = this.myName;
+        let mvpGoals = this.myArenaScore;
+        for (const r of this.remotes.values()) {
+          const goals = r.lastState?.score ?? 0;
+          if (goals > mvpGoals) {
+            mvpGoals = goals;
+            mvpName = r.info.name;
+          }
+        }
+        const mvp = mvpGoals > 0 ? ` · MVP: ${mvpName} (${mvpGoals})` : '';
+        if (winner === -1) {
+          this.hud.banner('DRAW', 6000);
+          this.hud.subBanner(`${b}–${o}${mvp}`, 7000);
+        } else {
           const won = winner === this.myTeam;
           this.hud.banner(won ? '🏆 VICTORY!' : 'DEFEAT', 6000, won ? '#ffe66d' : '#ff8a8a');
-          this.hud.subBanner(`${TEAM_NAMES[winner]} wins ${Math.max(b, o)}–${Math.min(b, o)}`, 6000);
+          this.hud.subBanner(`${TEAM_NAMES[winner]} wins ${Math.max(b, o)}–${Math.min(b, o)}${mvp}`, 7000);
         }
       } else if (this.level === 'pipe') {
         this.hud.banner('TIME!', 5000);
@@ -894,6 +911,22 @@ export class Game {
   private camDir = new THREE.Vector3(0, 0, 1);
 
   private updateCamera(dt: number): void {
+    // countdown: sweep down from above onto your kart
+    if (this.phase === 'countdown') {
+      const k = Math.max(0, Math.min(1, 1 - this.clock / 3));
+      const pos = this.vehicle.mesh.position;
+      const f = this.camDir;
+      const radius = 26 - 15 * k;
+      const height = 16 - 11.5 * k;
+      const swing = (1 - k) * 1.6;
+      const dirX = -f.x * Math.cos(swing) + f.z * Math.sin(swing);
+      const dirZ = -f.z * Math.cos(swing) - f.x * Math.sin(swing);
+      this.camPos.set(pos.x + dirX * radius, pos.y + height, pos.z + dirZ * radius);
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(pos.x, pos.y + 1, pos.z);
+      return;
+    }
+
     // cinematic orbit around the net after a goal
     if (this.goalCamTimer > 0) {
       this.goalCamTimer -= dt;

@@ -34,7 +34,17 @@ import { Hud } from './hud';
 import { Input } from './input';
 import { Net } from './net';
 import { buildVehicleMesh, Vehicle } from './vehicle';
-import { buildArena, buildPuckMesh, buildTerrainLevel, makeSnowfall, setupEnvironment, type BuiltWorld } from './world';
+import {
+  buildArena,
+  buildPuckMesh,
+  buildTerrainLevel,
+  makeSnowfall,
+  setupEnvironment,
+  weatherForSeed,
+  weatherSnowIntensity,
+  WEATHER_NAMES,
+  type BuiltWorld
+} from './world';
 
 interface SnapEntry {
   t: number;
@@ -67,7 +77,7 @@ export class Game {
   private snowFx: ParticleSystem;
   private boostFx: ParticleSystem;
   private sparkFx: ParticleSystem;
-  private snowfall: (camPos: THREE.Vector3, dt: number) => void;
+  private snowfall!: (camPos: THREE.Vector3, dt: number) => void;
   private sun!: THREE.DirectionalLight;
   private built!: BuiltWorld;
   private terrain: Terrain | null = null;
@@ -123,7 +133,6 @@ export class Game {
     this.snowFx = new ParticleSystem(this.scene, 0xffffff, 0.45);
     this.boostFx = new ParticleSystem(this.scene, 0xffa040, 0.6);
     this.sparkFx = new ParticleSystem(this.scene, 0x6fe3ff, 0.5);
-    this.snowfall = makeSnowfall(this.scene);
 
     this.net = new Net({
       onMessage: (m) => this.onNet(m),
@@ -151,7 +160,10 @@ export class Game {
   // ---------- world construction (after welcome gives us the seed) ----------
 
   private buildLevel(seed: number): void {
-    this.sun = setupEnvironment(this.scene, this.level);
+    const weather = weatherForSeed(this.level, seed);
+    this.sun = setupEnvironment(this.scene, this.level, weather);
+    this.snowfall = makeSnowfall(this.scene, weatherSnowIntensity(weather));
+    if (this.level !== 'arena') this.hud.feed(`Conditions: ${WEATHER_NAMES[weather]}`, '#cfeaff');
 
     if (this.level === 'arena') {
       this.built = buildArena(this.scene, this.world);

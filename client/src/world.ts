@@ -21,12 +21,44 @@ export interface GateVisual {
   mat: THREE.MeshStandardMaterial;
 }
 
-export function setupEnvironment(scene: THREE.Scene, level: LevelId): THREE.DirectionalLight {
-  const skyColor = level === 'arena' ? 0x16294a : 0x9fc8e8;
-  scene.background = new THREE.Color(skyColor);
-  scene.fog = new THREE.Fog(skyColor, level === 'arena' ? 140 : 180, level === 'arena' ? 500 : 850);
+export type Weather = 'bluebird' | 'whiteout' | 'golden';
 
-  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x4a6584, level === 'arena' ? 1.1 : 1.0);
+export const WEATHER_NAMES: Record<Weather, string> = {
+  bluebird: '☀️ BLUEBIRD',
+  whiteout: '🌨️ WHITEOUT',
+  golden: '🌅 GOLDEN HOUR'
+};
+
+export function weatherForSeed(level: LevelId, seed: number): Weather {
+  if (level === 'arena') return 'bluebird'; // arena keeps its night-stadium look
+  return (['bluebird', 'whiteout', 'golden'] as const)[seed % 3];
+}
+
+const WEATHER = {
+  bluebird: { sky: 0x9fc8e8, fogNear: 180, fogFar: 850, sun: 2.2, sunColor: 0xfff2dd, hemi: 1.0, snow: 1 },
+  whiteout: { sky: 0x8d9aa8, fogNear: 50, fogFar: 320, sun: 0.9, sunColor: 0xdfe8f0, hemi: 1.2, snow: 3 },
+  golden: { sky: 0xf0bd90, fogNear: 200, fogFar: 900, sun: 2.6, sunColor: 0xffc97a, hemi: 0.8, snow: 0.4 }
+};
+
+export function weatherSnowIntensity(weather: Weather): number {
+  return WEATHER[weather].snow;
+}
+
+export function setupEnvironment(scene: THREE.Scene, level: LevelId, weather: Weather = 'bluebird'): THREE.DirectionalLight {
+  const w = WEATHER[weather];
+  const skyColor = level === 'arena' ? 0x16294a : w.sky;
+  scene.background = new THREE.Color(skyColor);
+  scene.fog = new THREE.Fog(
+    skyColor,
+    level === 'arena' ? 140 : w.fogNear,
+    level === 'arena' ? 500 : w.fogFar
+  );
+
+  const hemi = new THREE.HemisphereLight(
+    weather === 'golden' ? 0xffe0bb : 0xcfe8ff,
+    0x4a6584,
+    level === 'arena' ? 1.1 : w.hemi
+  );
   scene.add(hemi);
 
   if (level === 'arena') {
@@ -48,7 +80,7 @@ export function setupEnvironment(scene: THREE.Scene, level: LevelId): THREE.Dire
     }
   }
 
-  const sun = new THREE.DirectionalLight(0xfff2dd, level === 'arena' ? 1.2 : 2.2);
+  const sun = new THREE.DirectionalLight(level === 'arena' ? 0xfff2dd : w.sunColor, level === 'arena' ? 1.2 : w.sun);
   sun.position.set(80, 140, 60);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -78,8 +110,8 @@ export function setupEnvironment(scene: THREE.Scene, level: LevelId): THREE.Dire
   return sun;
 }
 
-export function makeSnowfall(scene: THREE.Scene): (camPos: THREE.Vector3, dt: number) => void {
-  const COUNT = 1600;
+export function makeSnowfall(scene: THREE.Scene, intensity = 1): (camPos: THREE.Vector3, dt: number) => void {
+  const COUNT = Math.round(1600 * intensity);
   const RANGE = 110;
   const positions = new Float32Array(COUNT * 3);
   const speeds = new Float32Array(COUNT);

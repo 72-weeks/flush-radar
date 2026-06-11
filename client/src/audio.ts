@@ -222,6 +222,11 @@ export class GameAudio {
     notes.forEach((n, i) => setTimeout(() => this.blip(n, 0.22, 'triangle', 0.2), i * 70));
   }
 
+  driftBoost(level: number): void {
+    this.blip(330, 0.12, 'square', 0.18);
+    setTimeout(() => this.blip(level === 2 ? 660 : 494, 0.18, 'square', 0.2), 70);
+  }
+
   checkpoint(): void {
     this.blip(880, 0.15, 'sine', 0.22);
     setTimeout(() => this.blip(1175, 0.2, 'sine', 0.22), 80);

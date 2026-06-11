@@ -33,6 +33,8 @@ export class Vehicle {
   private flipRad = 0;
   private jumpsLeft = 2;
   private flippedTimer = 0;
+  driftCharge = 0; // seconds of sustained drift
+  driftBoostLevel = 0; // set for one frame when a charged drift is released
   private lastVy = 0;
   landImpact = 0;
 
@@ -125,11 +127,28 @@ export class Vehicle {
     }
     for (const i of [0, 1]) rc.setBrake(reversing ? 8 : 0, i);
 
-    // drift: rear grip drops, slight steering kick
+    // drift: rear grip drops, slight steering kick; sustained drifts charge a mini-turbo
+    const wasDrifting = this.drifting;
     this.drifting = allowDrive && input.drift && this.grounded && this.speed > 8;
     for (const i of [2, 3]) rc.wheelInfos[i].frictionSlip = this.drifting ? DRIFT_GRIP : GRIP;
-    if (this.drifting && steer !== 0) {
-      this.body.angularVelocity.y += steer * 2.2 * dt;
+    this.driftBoostLevel = 0;
+    if (this.drifting) {
+      if (steer !== 0) {
+        this.body.angularVelocity.y += steer * 2.2 * dt;
+        this.driftCharge += dt;
+      }
+    } else {
+      if (wasDrifting && this.grounded) {
+        const level = this.driftCharge > 2.0 ? 2 : this.driftCharge > 0.9 ? 1 : 0;
+        if (level > 0) {
+          const f = this.forward();
+          const kick = level === 2 ? 7 : 4;
+          this.body.applyImpulse(new CANNON.Vec3(f.x * kick * VEHICLE_MASS, 0, f.z * kick * VEHICLE_MASS));
+          this.boostMeter = Math.min(100, this.boostMeter + (level === 2 ? 25 : 10));
+          this.driftBoostLevel = level;
+        }
+      }
+      this.driftCharge = 0;
     }
 
     // boost (tapers off near top speed, weaker in the air)

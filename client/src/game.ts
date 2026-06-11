@@ -775,6 +775,17 @@ export class Game {
     if (v.grounded && (v.drifting || (Math.abs(this.input.steer) > 0 && v.speed > 14))) {
       const rear = new THREE.Vector3(0, -0.4, -CHASSIS_LENGTH * 0.4).applyQuaternion(v.mesh.quaternion).add(pos);
       this.snowFx.emit(rear, new THREE.Vector3(0, 2.5, 0), 3.5, 0.8, v.drifting ? 5 : 2);
+      // drift charge sparks: cyan at level 1, orange when fully charged
+      if (v.drifting && v.driftCharge > 0.9) {
+        const fx = v.driftCharge > 2.0 ? this.boostFx : this.sparkFx;
+        fx.emit(rear, new THREE.Vector3(0, 1.5, 0), 2.5, 0.4, 2);
+      }
+    }
+    if (v.driftBoostLevel > 0) {
+      const rear = new THREE.Vector3(0, 0, -CHASSIS_LENGTH * 0.45).applyQuaternion(v.mesh.quaternion).add(pos);
+      (v.driftBoostLevel === 2 ? this.boostFx : this.sparkFx).burst(rear, 8, 40, 0.7);
+      this.audio.driftBoost(v.driftBoostLevel);
+      if (v.driftBoostLevel === 2) this.hud.trickPopup('🔥 TURBO DRIFT');
     }
 
     this.snowFx.update(dt);

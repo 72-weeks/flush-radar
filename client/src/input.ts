@@ -5,6 +5,7 @@ export class Input {
   private pressed = new Set<string>(); // edge-triggered, cleared each frame
   private gp = { steer: 0, throttle: 0, boost: false, drift: false };
   private prevGpJump = false;
+  private prevGpCam = false;
 
   constructor() {
     window.addEventListener('keydown', (e) => {
@@ -47,6 +48,9 @@ export class Input {
     const jump = pad.buttons[0]?.pressed ?? false;
     if (jump && !this.prevGpJump) this.pressed.add('Space');
     this.prevGpJump = jump;
+    const camBtn = pad.buttons[3]?.pressed ?? false;
+    if (camBtn && !this.prevGpCam) this.pressed.add('KeyC');
+    this.prevGpCam = camBtn;
   }
 
   down(...codes: string[]): boolean {

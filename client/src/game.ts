@@ -118,6 +118,7 @@ export class Game {
   private combo = 0;
   private comboExpires = 0;
   private myArenaScore = 0;
+  private puckCam = true;
 
   // adaptive quality
   private fpsEma = 60;
@@ -945,6 +946,26 @@ export class Game {
     const v = this.vehicle;
     const pos = v.mesh.position;
 
+    // puck-cam: keep the puck framed (arena only, while in play)
+    if (this.puckCam && this.puckMesh && this.puckMesh.visible) {
+      const puck = this.puckMesh.position;
+      const away = new THREE.Vector3(pos.x - puck.x, 0, pos.z - puck.z);
+      const d = away.length();
+      if (d > 1) {
+        away.divideScalar(d);
+        const dist = 11 + v.speed * 0.04;
+        const desired = new THREE.Vector3(pos.x + away.x * dist, pos.y + 4.6, pos.z + away.z * dist);
+        this.camPos.lerp(desired, 1 - Math.exp(-7 * dt));
+        if (this.camPos.y < 1.2) this.camPos.y = 1.2;
+        this.camera.position.copy(this.camPos).add(this.shake.update(dt));
+        this.camera.lookAt(puck.x, puck.y + 1, puck.z);
+        const targetFov = v.boosting ? 84 : 72;
+        this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, 8 * dt);
+        this.camera.updateProjectionMatrix();
+        return;
+      }
+    }
+
     // follow direction: horizontal velocity when moving, else horizontal facing
     const vel = v.body.velocity;
     const hSpeed = Math.hypot(vel.x, vel.z);
@@ -1069,6 +1090,10 @@ export class Game {
 
   private handleKeys(): void {
     if (this.input.justPressed('KeyR')) this.respawn();
+    if (this.input.justPressed('KeyC') && this.level === 'arena') {
+      this.puckCam = !this.puckCam;
+      this.hud.feed(this.puckCam ? '🎥 PUCK CAM' : '🎥 CHASE CAM', '#9fe3ff');
+    }
     if (this.input.justPressed('KeyM')) this.audio.toggleMute();
     if (this.input.justPressed('KeyH')) {
       this.net.send({ t: 'horn' });

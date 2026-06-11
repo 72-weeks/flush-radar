@@ -119,6 +119,7 @@ export class Game {
   private comboExpires = 0;
   private myArenaScore = 0;
   private puckCam = true;
+  private cpTimes: number[] = [];
 
   // adaptive quality
   private fpsEma = 60;
@@ -408,6 +409,7 @@ export class Game {
       this.myCp = 0;
       this.myScore = 0;
       this.myFinish = 0;
+      this.cpTimes = [];
       this.avalancheWarned = false;
       this.resetStars();
       this.hud.hideBanner();
@@ -685,9 +687,22 @@ export class Game {
           this.myCp++;
           this.net.send({ t: 'checkpoint', index: this.myCp });
           this.audio.checkpoint();
+          // split vs personal-best run
+          const tMs = performance.now() - this.playStart;
+          this.cpTimes.push(tMs);
+          const pbSplits: number[] = JSON.parse(localStorage.getItem('pb-race-splits') || '[]');
+          const pb = pbSplits[this.myCp - 1];
+          let splitHtml = '';
+          if (pb) {
+            const diff = (tMs - pb) / 1000;
+            const color = diff <= 0 ? '#7dffa0' : '#ff8a8a';
+            splitHtml = `<span style="color:${color}">${diff <= 0 ? '' : '+'}${diff.toFixed(2)}s</span>`;
+          }
           if (cp.boost && precise) {
             this.vehicle.boostMeter = Math.min(100, this.vehicle.boostMeter + 55);
-            this.hud.trickPopup('⚡ BOOST GATE +55');
+            this.hud.trickPopup(`⚡ BOOST GATE +55${splitHtml ? '<br>' + splitHtml : ''}`);
+          } else if (splitHtml) {
+            this.hud.trickPopup(splitHtml, 1200);
           }
         }
       } else if (!this.myFinish && pos.z < RACE_FINISH_Z) {
@@ -696,6 +711,7 @@ export class Game {
         const pb = Number(localStorage.getItem('pb-race') || 0);
         if (!pb || this.myFinish < pb) {
           localStorage.setItem('pb-race', String(Math.round(this.myFinish)));
+          localStorage.setItem('pb-race-splits', JSON.stringify(this.cpTimes.map(Math.round)));
           this.hud.banner('FINISH!', 3000, '#7dffa0');
           this.hud.subBanner(`${(this.myFinish / 1000).toFixed(2)}s — 🏅 NEW PERSONAL BEST!`, 4000);
         } else {
